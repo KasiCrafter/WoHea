@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>World Hearth</title>
+
+		<meta charset="utf-8">
+		<style>
+
+			body {
+				background-color: black;
+			}
+
+		</style>
+	</head>
+
+	<body onload="gameLoop()">
+		<script>
+//Start config options
+			var pixelScale = 3;
+			var bgColor = "#d7e894";
+			var inputState = {
+				aButton : [false, "done"],
+				bButton : [false, "done"],
+				lButton : [false, "done"],
+				rButton : [false, "done"],
+				uButton : [false, "done"],
+				wButton : [false, "done"],
+				zbugUp : [false, "done"],
+				zzbugDown : [false, "done"]
+			};
+			var inputKeys = {
+				aButton : "z", //Z by Default
+				bButton : "x", //X by default
+				lButton : "ArrowLeft", //Left Arrow Key
+				rButton : "ArrowRight", //Right Arrow Key
+				uButton : "ArrowUp", //Up Arrow Key
+				wButton : "ArrowDown", //Down Arrow Key
+				zbugUp : "9",
+				zzbugDown : "0"
+			};
+			var trayImg = new Image();
+			trayImg.src = "tray.png";			
+			var traySize = trayImg.width;
+			var globalInv = [];
+			var itemLog = [];
+
+//End config options
+
+//DEBUG TOOLS
+		var stop = false;
+		var frameCount = 0;
+		var now = performance.now();
+		var debugMode = false;
+		var deltaFr = 0;
+		var deltaTime = performance.now();
+		var frameBefore = 0;
+
+		function carpenter(couch) {
+			couch = globalInv[couch];
+
+			if (inputState.rButton[1] == "held") {
+				couch.xPos += scalePx(1);
+			}
+			else if (inputState.lButton[1] == "held") {
+				couch.xPos -= scalePx(1);
+			}
+
+			if (inputState.wButton[1] == "held") {
+				couch.yPos += scalePx(1);
+			}
+			else if (inputState.uButton[1] == "held") {
+				couch.yPos -= scalePx(2);
+			}
+		}
+//
+
+//Start canvas delerations
+			var canvas = document.createElement("canvas");
+			canvas.id = "gameCanvas";
+			canvas.width = 160 * pixelScale;
+			canvas.height = 144 * pixelScale;
+			canvas.style.position = "center";
+			canvas.style.background = "white";
+			canvas.style.position = "relative";
+			canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
+			canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
+
+			var ctxGame = canvas.getContext("2d");
+			ctxGame.imageSmoothingEnabled = false;
+
+			ctxGame.font = (10 * pixelScale) + "px Arial";
+
+			var body = document.getElementsByTagName("body")[0];
+			body.appendChild(canvas);
+//End canvas declarations
+
+//Start Input Functions
+
+			document.addEventListener("keydown", inputHandler, false);
+			document.addEventListener("keyup", inputHandler, false);
+			canvas.addEventListener("mousedown", rebindControls, false);
+			//document.addEventListener("keypress", inputHandler, false);
+			
+			function inputHandler(event){
+				for(var input in inputKeys){
+					if (inputKeys[input] == event.key) {
+						inputState[input][0] = event.type == 'keydown';
+					}
+					if (inputState[input] == "rebinding" && event.type == 'keyup') {
+						inputKeys[input] = event.key;
+						inputState[input] = [false, "done"];
+						break;
+					}
+				}
+				
+
+				if (event.key == "`" && event.type == 'keyup') {
+					debugMode = !debugMode;
+				}
+			}
+
+			function inputProcess(){
+				for (var press in inputState) {
+					if (inputState[press][0] && inputState[press][1] == "done") {
+						inputState[press][1] = "tap";
+					}
+					else if (inputState[press][0] && inputState[press][1] == "tap") {
+						inputState[press][1] = "held";
+					}
+					else if (!inputState[press][0]) {
+						inputState[press][1] = "done";
+					}
+				}
+			}
+
+			function rebindControls() {
+				debugMode = true;
+
+				for (var remap in inputState) {
+					inputState[remap] = "rebinding";
+					inputKeys[remap] = "[?]";				
+				}
+			}
+//End Input Functions
+
+//Sprite Cutting Functions
+
+
+
+			var testImg = new Image();
+			testImg.src = "pot.png";
+
+
+//End Sprite Cutting Functions
+
+//Gameplay objects/functions
+
+		function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchorMod){
+			this.name = name || "NO NAME";
+			this.sprite = sprite || "NO IMAGE";
+			this.capacity = capacity || 1;
+			this.heat = heat || 1;
+			this.xPos = xPos || 0;
+			this.yPos = yPos || 0;
+			this.xCrunch = 0;
+			this.yCrunch = 0;
+			this.width = width || 0;
+			this.height = height || 0;
+			this.anchorMod = anchorMod || [0,0];
+			this.anchor = (function () {return [(sprite.width / 2) + xPos + anchorMod[0], (sprite.height / 2) + yPos + anchorMod[1]]})();
+			this.contents = [];
+		} 
+		
+		function Item(name, type, currTime, maxTime) {
+			this.name = name || "???";
+			this.type = type || "NULL";
+			this.sprite = trayImg;
+			this.currTime = currTime || 0;
+			this.maxTime = maxTime || 0;
+			this.InvEffect = 0;
+			this.HrtEffect = 0;
+			this.BllwEffect = 0;
+			this.ThrEffect = 0;
+			this.xPos = 0;
+			this.yPos = 0;
+		}
+
+		function drawItems() {
+			for (var box in globalInv) {
+
+				if (globalInv[box].contents.length <= 0) {
+					break;
+				}
+
+				for (var i = 0; i < globalInv[box].contents.length; i++) {
+					/*if (i * traySize < (globalInv[box].width * globalInv[box].height)) {
+						if (i == 0) {
+							itemOffset[2] = (traySize * globalInv[box].contents.length) / globalInv[box].width;
+
+							itemOffset[0] = globalInv[box].width / 2;
+							itemOffset[1] = globalInv[box].anchor[1] / 2;
+						}
+
+						scaleImg(
+							trayImg,
+							globalInv[box].anchor[0] - itemOffset[0] + (traySize * i) % globalInv[box].width,
+							Math.floor(traySize * i / globalInv[box].width) * traySize,// + itemOffset[1], //globalInv[box].anchor[1],// - itemOffset[1],
+							traySize,
+							traySize
+						);
+
+
+
+						//Math.floor(traySize * i / globalInv[box].width) * traySize,
+
+									//ctxGame.strokeStyle ="#000000";
+						//ctxGame.fillStyle = "#000000";
+
+						//ctxGame.fillText("X" + i + (globalInv[box].anchor[0] - itemOffset[0] + (traySize * i) % globalInv[box].width), scalePx(globalInv[box].anchor[0] - itemOffset[0] + (traySize * i) % globalInv[box].width), scalePx(20) * i);
+
+						//ctxGame.fillText("Y" +(traySize * i) / globalInv[box].width * traySize, scalePx(globalInv[box].anchor[0] - itemOffset[0] + (traySize * i) % globalInv[box].width), scalePx((traySize * i) / globalInv[box].width * traySize) + 30);
+
+						//ctxGame.fillText("Y" + i + (globalInv[box].anchor[1] - itemOffset[1] + (traySize * i) % globalInv[box].height), scalePx(70), scalePx(globalInv[box].anchor[1] - itemOffset[1] + (traySize * i) % globalInv[box].height));
+
+						//itemOffset[1]--;
+					}*/
+					scaleImg(
+						globalInv[box].contents[i].sprite,
+						globalInv[box].contents[i].xPos,
+						globalInv[box].contents[i].yPos						
+					);
+				}
+			}
+		}
+
+		function drawInventories() {
+			for (var inv in globalInv) {
+
+				scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
+				scaleRect(
+					globalInv[inv].anchor[0] - (globalInv[inv].width / 2), //- (traySize / 2) * (globalInv[inv].width / traySize), 
+					globalInv[inv].anchor[1] - (globalInv[inv].height / 2), //- (traySize / 2) * (globalInv[inv].height / traySize), 
+					globalInv[inv].width - globalInv[inv].xCrunch, 
+					globalInv[inv].height - globalInv[inv].yCrunch
+				);
+			}
+		}
+
+		function insertInventory(oneItem, targInv){
+
+		}
+
+		function checkCrunchInv(invObject) {
+
+
+
+			/*if (invObject.contents.length <= 0) {
+				for (var mg = 0; mg < invObject.capacity; m++) {
+
+				}
+			}*/
+		}
+//End gameplay objects/functions
+
+//Screen Functions
+		function scalePx(dim){
+			return (pixelScale * dim);
+		}
+
+		function scaleImg(spr, sprX, sprY){
+			ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
+		}
+
+		function scaleRect(rectX, rectY, recWid, recHgt) {
+			ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(recWid), scalePx(recHgt));
+		}
+
+
+		function clearScreen(){
+			ctxGame.fillStyle = bgColor;
+			ctxGame.fillRect(0, 0, canvas.width, canvas.height);
+
+			canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
+			canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
+			ctxGame.imageSmoothingEnabled = false; 
+
+			ctxGame.beginPath();
+			ctxGame.moveTo(canvas.width / 2, 0);
+			ctxGame.lineTo(canvas.width /2, canvas.height);
+			ctxGame.stroke();
+		}
+
+		function changeScale(){
+			var modifier = 0;
+
+			if (inputState["zbugUp"][1] == "tap"){
+				modifier = 1;
+			}
+			if (inputState["zzbugDown"][1] == "tap") {
+				modifier = -1;
+			}
+
+			pixelScale += modifier;
+
+			if (pixelScale <= 0) {
+				pixelScale = 1;
+			}
+
+			canvas.width = 160 * pixelScale;
+			canvas.height = 144 * pixelScale;
+			ctxGame.font = (10 * pixelScale) + "px Arial"; 
+		}
+//End screen functions
+
+
+//Last minute initializations
+	//			  function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor){
+		globalInv.push(new Inventory("Hearth", testImg, 4, 5, traySize * 3, traySize * 2, 8, 10, [0, 2]));
+
+		itemLog.push(new Item("Junk", "bad", "0", "50"));
+
+		for (j = 0; j < 3; j++) {
+			globalInv[0].contents.push(itemLog[0]); 
+		}
+
+//End of last calls
+
+
+
+	function gameLoop(){
+		now = performance.now();
+
+		if (now - deltaTime > 1000) {
+			deltaFr = frameCount - frameBefore;
+			frameBefore = frameCount;
+			deltaTime = now;
+		}
+
+
+		if (!stop) {
+			frameCount++;
+
+			changeScale();
+			clearScreen();
+			inputProcess();
+
+
+			drawInventories();
+			//drawItems();
+
+			if (debugMode) {
+			carpenter(0);
+
+			ctxGame.strokeStyle ="#000000";
+			ctxGame.fillStyle = "#000000";
+
+			ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(20), scalePx(20));
+			ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(20), scalePx(30));
+			ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(20), scalePx(40));
+			ctxGame.fillText("[Right]: "     + inputState["rButton"] + " >" + inputKeys["rButton"], scalePx(20), scalePx(50));
+			ctxGame.fillText("[Up]: "        + inputState["uButton"] + " >" + inputKeys["uButton"], scalePx(20), scalePx(60));
+			ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(20), scalePx(70));
+			ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(20), scalePx(80));
+			ctxGame.fillText("[Downscale]: " + inputState["zzbugDown"] + " >" + inputKeys["zzbugDown"], scalePx(20), scalePx(90));
+
+			ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(100));
+			}
+		}
+		
+		requestAnimationFrame(gameLoop);
+	}
+
+
+
+			/* Ideas:
+			ENEMIES:
+			SwapImp: If next to an item on the hot bar, it will swap with the middle block before the process occurs.
+					 Once inside the hearth, they'll start to simmer. Once cooked, they spit out whatever is next to them
+					 back to the hotbar. Alternatively, they get thrown out if you decide so.
+
+			Junk: This block does nothing! However, it'll disappear once it finishes sizzling in whatever inventory it's in.
+
+			DustBuni: Appears if the player has too many items in the hotbar. Will sizzle only when not viewed. If sizzled in 			  inventory, it turns the two adjacent items to DusBuni's. If a Dustbuni is Dusbuni'd, it turns into JUNK.
+					  DustBuni's make for good fuel, but create SMOKE in the bellows when burned.
+
+
+			Smoke: Will always move into the bellows if possible (when bellows are expanding). When sizzling, they trap heat; 		   completing a sizzle will not do anything by itself. However, when removed from a heat source, they will release that heat, slowly losing it over time. Once it has no more heat, it disappears.
+
+
+
+			RESOURCES:
+				PopKern: Inert when no heat. When it sizzles to completion, it breaks adjacent items and turns into Popcrn. Destroyed when sizzled to completion. Popcrn can also
+
+				Coal: When sizzling, it greatly boosts the heat of the container it's in. Greatly. Exceedingly so. When sizzling, it is impossible to retrieve from the oven, easily causing overheating. Produces more Smoke than usual when heating.
+
+				Ice: When sizzling, reduces heat in the container. Once cooked, it turns into water, which GREATLY impedes flame 	growth for as long as it sizzles. Critically so. Turns to steam in extreme heat.
+
+
+
+
+			INTERACTIONS:
+
+
+
+			*/
+
+		</script>
+	</body>
+</html>
+
