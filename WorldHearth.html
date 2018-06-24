@@ -42,6 +42,7 @@
 			trayImg.src = "tray.png";			
 			var traySize = trayImg.width;
 			var globalInv = [];
+			var localInv = [];
 			var itemLog = [];
 			var insertPoint = 0;
 			var insertSpeed = 2;
@@ -151,6 +152,24 @@
 					inputKeys[remap] = "[?]";				
 				}
 			}
+
+			function playerAction() {
+				if (inputState.lButton[1] == "tap" && insertPoint > 0) {
+					insertPoint--;
+				}
+
+				if (inputState.rButton[1] == "tap" && insertPoint < (globalInv[0].width / traySize) - 1) {
+					insertPoint++;
+				}
+
+				if (inputState.uButton[1] == "tap" && globalInv[0].capacity > globalInv[0].contents.length) {
+					insertInventory(0, 0, true);
+				}
+
+				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
+					globalInv[0].contents.pop();
+				}
+			}
 //End Input Functions
 
 //Sprite Cutting Functions
@@ -163,7 +182,7 @@
 
 //End Sprite Cutting Functions
 
-//Gameplay objects/functions
+//Items and inventory functions
 
 		function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor, anchorMod){
 			this.name = name || "NO NAME";
@@ -220,30 +239,52 @@
 
 			for (var invs = 0; invs < globalInv.length; invs++) {	
 
-				for (var blks = 0; blks < globalInv[invs].contents.length; blks++) {					
-					hitboxHold = globalInv[invs].contents[blks];
+				for (var blks = 0; blks < globalInv[invs].contents.length; blks++) {	
 
-					for (var n = 0; n < globalInv[invs].contents.length; n++) {
+					if (globalInv[invs].contents[blks].xSpeed != 0 || globalInv[invs].contents[blks].ySpeed != 0) {				
+						hitboxHold = Object.assign({}, globalInv[invs].contents[blks]);
 
-							if ((hitboxHold.xPos >= globalInv[invs].contents[n].xPos + globalInv[invs].contents[n].width)|| 
-								(hitboxHold.xPos <= globalInv[invs].anchor[0]) || 
-								(hitboxHold.xPos >= globalInv[invs].anchor[0] + globalInv[invs].width)) {
-									globalInv[invs].contents[blks].xPos -= globalInv[invs].contents[blks].xSpeed;
-									globalInv[invs].contents[blks].xSpeed = 0;
+						for (var n = 0; n < globalInv[invs].contents.length; n++) {
+
+							if (hitboxHold.yPos <= globalInv[invs].anchor[0]) {
+									hitboxHold.yPos -= hitboxHold.ySpeed;
+									hitboxHold.ySpeed = 0;	
+
+									globalInv[invs].contents[blks] = hitboxHold;
+									break;
 							}
 
-							if ((globalInv[invs].contents[n] != hitboxHold &&
-							   (hitboxHold.yPos <= globalInv[invs].contents[n].yPos) || 
-								hitboxHold.yPos <= globalInv[invs].anchor[1])) {
-									globalInv[invs].contents[blks].yPos -= globalInv[invs].contents[blks].ySpeed;
-									globalInv[invs].contents[blks].ySpeed = 0;
-							}						
-					}
+							else if (hitboxHold != globalInv[invs].contents[blks]) {
 
-					globalInv[invs].contents[blks].xPos += globalInv[invs].contents[blks].xSpeed;
-					globalInv[invs].contents[blks].yPos += globalInv[invs].contents[blks].ySpeed;
-				}
-			} 
+								if ((hitboxHold.xPos == globalInv[invs].contents[n].xPos) &&
+									(hitboxHold.yPos <= globalInv[invs].contents[n].yPos + traySize)) {
+										hitboxHold.yPos -= hitboxHold.ySpeed;
+										hitboxHold.ySpeed = 0;		
+
+										globalInv[invs].contents[blks] = hitboxHold;
+										break;	
+								}
+
+								hitboxHold.xPos += hitboxHold.xSpeed;
+								hitboxHold.yPos += hitboxHold.ySpeed;
+							}
+						}
+
+
+
+						/*
+							if ((hitboxHold.xPos <= globalInv[invs].anchor[0] || hitboxHold.xPos <=globalInv[invs].contents[n].xPos) &&(hitboxHold.yPos <= globalInv[invs].anchor[1] || hitboxHold.yPos <=globalInv[invs].contents[n].yPos)){
+
+								globalInv[invs].contents[blks].yPos -= globalInv[invs].contents[blks].ySpeed;
+								globalInv[invs].contents[blks].ySpeed = 0;			
+							}
+
+							globalInv[invs].contents[blks].xPos += globalInv[invs].contents[blks].xSpeed;
+							globalInv[invs].contents[blks].yPos += globalInv[invs].contents[blks].ySpeed;
+						}*/
+					}
+				} 
+			}
 		}
 
 		function drawInventories() {
@@ -259,31 +300,29 @@
 			}
 		}
 
-		function insertInventory(itemIdx, targInv, isVert){
-			itemIdx = itemLog[itemIdx];
+		function insertInventory(itemIdx, targInv, isVert){			
+			var newBlock = Object.assign({}, itemLog[itemIdx]);
 			targInv = globalInv[targInv];
 			isVert = isVert || false;
 
-			itemIdx.xPos = targInv.anchor[0] + (traySize * insertPoint);
-			itemIdx.yPos = targInv.sprite.height;
+			newBlock.xPos = targInv.anchor[0] + (traySize * insertPoint);
+			newBlock.yPos = targInv.sprite.height;
 
 			if (isVert) {
-				itemIdx.ySpeed = -insertSpeed;
-				itemIdx.xSpeed = 0;
+				newBlock.ySpeed = -insertSpeed;
+				newBlock.xSpeed = 0;
 			}
 			else {
-				itemIdx.xSpeed = insertSpeed;
-				itemIdx.xSpeed = 0;
+				newBlock.xSpeed = insertSpeed;
+				newBlock.xSpeed = 0;
 			}
 
-
-			targInv.contents.push(itemIdx);
+			targInv.contents.push(newBlock);
 		}
 
 
 
-
-//End gameplay objects/functions
+//End item/inventory objects/functions
 
 //Screen Functions
 		function scalePx(dim){
@@ -346,7 +385,7 @@
 			//globalInv[0].contents.push(itemLog[0]); 
 		//}
 
-		insertInventory(0, 0, true);
+		//insertInventory(0, 0, true);
 
 //End of last calls
 
@@ -368,6 +407,7 @@
 			changeScale();
 			clearScreen();
 			inputProcess();
+			playerAction();
 
 
 			itemPhysics();
