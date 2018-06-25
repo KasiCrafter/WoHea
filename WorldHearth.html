@@ -46,7 +46,8 @@
 			var itemLog = [];
 			var insertPoint = 0;
 			var insertSpeed = 2;
-			var hitboxHold = {};
+			var hitBoxHold = {};
+			var hitCheckHold = {};
 
 //End config options
 
@@ -167,7 +168,13 @@
 				}
 
 				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
-					globalInv[0].contents.pop();
+					for (var p = 0; p < globalInv[0].contents.length; p++) {
+						if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
+							globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
+							break;
+
+						}
+					}					
 				}
 			}
 //End Input Functions
@@ -197,8 +204,20 @@
 			this.height = height || 0;
 			this.anchorMod = anchorMod || [0,0];
 			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1]];//[sprite.width / 2 + xPos + anchorMod[0], (sprite.height / 2) + yPos + anchorMod[1]];
-			this.contents = [];
+			this.contents = generateInv(this.height, this.width);
 		} 
+
+		function generateInv (height, width) { 
+			var pndInv = [];
+			for (var rw = 0; rw < height / traySize; rw++) {
+				pndInv.push([]);
+
+				for (var clm = 0; clm < width / traySize; clm++) {	
+					pndInv[rw].push(0);
+				}	
+			}
+			return pndInv;	
+		}
 		
 		function Item(name, sprite, type, currCook, maxCook) {
 			this.name = name || "???";
@@ -225,35 +244,89 @@
 				}
 
 				for (var i = 0; i < globalInv[box].contents.length; i++) {
-					scaleImg(
-						globalInv[box].contents[i].sprite,
-						globalInv[box].contents[i].xPos + globalInv[box].xPos,
-						globalInv[box].contents[i].yPos	+ globalInv[box].yPos				
-					);
+					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
+						if (globalInv[box].contents[i][v] != 0) {
+							scaleImg(
+								globalInv[box].contents[i][v].sprite,
+								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
+								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
+							);
+						}
+					}
 				}
 			}
 		}
 
 		function itemPhysics() {
-			hitboxHold = {};
+			hitBoxHold = -1;
+			hitCheckHold = -1;
 
-			for (var invs = 0; invs < globalInv.length; invs++) {	
+			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
+				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
+					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
+							ctxGame.strokeStyle ="#000000";
+							ctxGame.fillStyle = "#000000";
+							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].yPos || 101) + ", " + (globalInv[invs].contents[y][x].xPos || 101) + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
 
-				for (var blks = 0; blks < globalInv[invs].contents.length; blks++) {	
+							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
+								(globalInv[invs].contents.length - 1 >= y + 1 &&
+								globalInv[invs].contents[y][x].yPos == globalInv[invs].contents[y + 1][x].yPos + traySize &&
+								globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) {
+								globalInv[invs].contents[y][x].ySpeed = 0;
+							}
 
-					if (globalInv[invs].contents[blks].xSpeed != 0 || globalInv[invs].contents[blks].ySpeed != 0) {				
-						hitboxHold = Object.assign({}, globalInv[invs].contents[blks]);
+							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
+						}
+						//hitboxHold = Object.assign({}, globalInv[invs].contents[blks]);
 
-						for (var n = 0; n < globalInv[invs].contents.length; n++) {
+					/*	for (var n = 0; n < globalInv[invs].contents.length - 1; n++) { //Find lowest block to collide with
 
-							if (hitboxHold.yPos <= globalInv[invs].anchor[0]) {
+							if (hitCheckHold == -1 || (hitboxHold.yPos < globalInv[invs].contents[n].yPos &&
+								globalInv[invs].contents[n].yPos < globalInv[invs].anchor[1] + globalInv[invs].anchor[1].height &&
+								hitboxHold.xPos == globalInv[invs].contents[n].xPos &&
+								globalInv[invs].contents[n].ySpeed == 0)) {
+
+								hitCheckHold = Object.assign({}, globalInv[invs].contents[n]);
+
+							}
+							else if (hitCheckHold == -1 || (hitboxHold.xPos < globalInv[invs].contents[n].xPos &&
+								hitboxHold.yPos == globalInv[invs].contents[n].yPos &&
+								globalInv[invs].contents[n].xSpeed == 0)) {
+
+								hitCheckHold = Object.assign({}, globalInv[invs].contents[n]);
+
+							}
+						
+
+							if (hitboxHold.yPos <= globalInv[invs].anchor[1]) {
+								hitboxHold.yPos -= hitboxHold.ySpeed;
+								hitboxHold.ySpeed = 0;	
+							}
+
+							else if (hitCheckHold != -1 && 
+								hitboxHold.yPos <= hitCheckHold.yPos + traySize && 
+								hitboxHold.xPos == hitCheckHold.xPos &&
+								hitCheckHold.ySpeed == 0) {
+
+								hitboxHold.yPos -= hitboxHold.ySpeed;
+								hitboxHold.ySpeed = 0;	
+
+							}
+
+							hitboxHold.xPos += hitboxHold.xSpeed;
+							hitboxHold.yPos += hitboxHold.ySpeed;				
+
+							globalInv[invs].contents[blks] = hitboxHold;
+							globalInv[invs].contents[blks] = hitboxHold;
+
+
+							/*if (hitboxHold.yPos <= globalInv[invs].anchor[0]) {
 									hitboxHold.yPos -= hitboxHold.ySpeed;
 									hitboxHold.ySpeed = 0;	
 
 									globalInv[invs].contents[blks] = hitboxHold;
 									break;
 							}
-
 							else if (hitboxHold != globalInv[invs].contents[blks]) {
 
 								if ((hitboxHold.xPos == globalInv[invs].contents[n].xPos) &&
@@ -267,12 +340,11 @@
 
 								hitboxHold.xPos += hitboxHold.xSpeed;
 								hitboxHold.yPos += hitboxHold.ySpeed;
-							}
-						}
+							} */
+						
 
 
-
-						/*
+							/*
 							if ((hitboxHold.xPos <= globalInv[invs].anchor[0] || hitboxHold.xPos <=globalInv[invs].contents[n].xPos) &&(hitboxHold.yPos <= globalInv[invs].anchor[1] || hitboxHold.yPos <=globalInv[invs].contents[n].yPos)){
 
 								globalInv[invs].contents[blks].yPos -= globalInv[invs].contents[blks].ySpeed;
@@ -281,9 +353,9 @@
 
 							globalInv[invs].contents[blks].xPos += globalInv[invs].contents[blks].xSpeed;
 							globalInv[invs].contents[blks].yPos += globalInv[invs].contents[blks].ySpeed;
-						}*/
-					}
-				} 
+							}*/ 
+					
+				}
 			}
 		}
 
@@ -317,7 +389,12 @@
 				newBlock.xSpeed = 0;
 			}
 
-			targInv.contents.push(newBlock);
+			for (var ins = 0; ins < targInv.contents.length; ins++) {
+				if (targInv.contents[ins][insertPoint] == 0) {
+					targInv.contents[ins][insertPoint] = newBlock;
+					break;
+				}
+			}			
 		}
 
 
