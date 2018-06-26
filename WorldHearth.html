@@ -26,7 +26,8 @@
 				uButton : [false, "done"],
 				wButton : [false, "done"],
 				zbugUp : [false, "done"],
-				zzbugDown : [false, "done"]
+				z2bugDown : [false, "done"],
+				z3bugExit : [false, "done"]
 			};
 			var inputKeys = {
 				aButton : "z", //Z by Default
@@ -36,11 +37,13 @@
 				uButton : "ArrowUp", //Up Arrow Key
 				wButton : "ArrowDown", //Down Arrow Key
 				zbugUp : "9",
-				zzbugDown : "0"
+				z2bugDown : "0",
+				z3bugExit : "`"
 			};
 			var trayImg = new Image();
-			trayImg.src = "tray.png";			
-			var traySize = trayImg.width;
+			trayImg.src = "tray.png";
+			var img = new Image();   // Create new img element	
+			var traySize = 15;
 			var globalInv = [];
 			var localInv = [];
 			var itemLog = [];
@@ -77,7 +80,7 @@
 			if (inputState.wButton[1] == "held" && inputState.uButton[1] == "held") {
 				//Blank on purpose
 			}
-			if (inputState.wButton[1] == "held") {
+			else if (inputState.wButton[1] == "held") {
 				couch.yPos += 1;
 			}
 			else if (inputState.uButton[1] == "held") {
@@ -126,7 +129,7 @@
 				}
 				
 
-				if (event.key == "`" && event.type == 'keyup') {
+				if (event.key == inputKeys["z3bugExit"] && event.type == 'keyup') {
 					debugMode = !debugMode;
 				}
 			}
@@ -155,26 +158,28 @@
 			}
 
 			function playerAction() {
-				if (inputState.lButton[1] == "tap" && insertPoint > 0) {
-					insertPoint--;
-				}
+				if (!debugMode) {
+					if (inputState.lButton[1] == "tap" && insertPoint > 0) {
+						insertPoint--;
+					}
 
-				if (inputState.rButton[1] == "tap" && insertPoint < (globalInv[0].width / traySize) - 1) {
-					insertPoint++;
-				}
+					if (inputState.rButton[1] == "tap" && insertPoint < (globalInv[0].width / traySize) - 1) {
+						insertPoint++;
+					}
 
-				if (inputState.uButton[1] == "tap" && globalInv[0].capacity > globalInv[0].contents.length) {
-					insertInventory(0, 0, true);
-				}
+					if (inputState.uButton[1] == "tap" && globalInv[0].capacity > globalInv[0].contents.length) {
+						insertInventory(0, 0, true);
+					}
 
-				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
-					for (var p = 0; p < globalInv[0].contents.length; p++) {
-						if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
-							globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
-							break;
+					if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
+						for (var p = 0; p < globalInv[0].contents.length; p++) {
+							if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
+								globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
+								break;
 
-						}
-					}					
+							}
+						}					
+					}
 				}
 			}
 //End Input Functions
@@ -203,8 +208,9 @@
 			this.width = width || 0;
 			this.height = height || 0;
 			this.anchorMod = anchorMod || [0,0];
-			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1]];//[sprite.width / 2 + xPos + anchorMod[0], (sprite.height / 2) + yPos + anchorMod[1]];
+			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1]];
 			this.contents = generateInv(this.height, this.width);
+			//console.log("INVENTORY OBJECT LOADED");
 		} 
 
 		function generateInv (height, width) { 
@@ -216,6 +222,8 @@
 					pndInv[rw].push(0);
 				}	
 			}
+
+						//console.log("INVENTORY MATRIX READY");
 			return pndInv;	
 		}
 		
@@ -234,6 +242,7 @@
 			this.BllwEffect = 0;
 			this.ThrEffect = 0;
 
+			//console.log("ITEM OBJECT GOOD TO GO");
 		}
 
 		function drawItems() {
@@ -255,6 +264,8 @@
 					}
 				}
 			}
+
+			//console.log("DRAWING ITEMS!");
 		}
 
 		function itemPhysics() {
@@ -266,7 +277,7 @@
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
 							ctxGame.strokeStyle ="#000000";
 							ctxGame.fillStyle = "#000000";
-							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].yPos || 101) + ", " + (globalInv[invs].contents[y][x].xPos || 101) + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
+							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].yPos || "??") + ", " + (globalInv[invs].contents[y][x].xPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
 
 							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
 								(globalInv[invs].contents.length - 1 >= y + 1 &&
@@ -363,13 +374,22 @@
 			for (var inv in globalInv) {
 
 				scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
+					//console.log("DRAWING INVENTORY SPRITE");
 				scaleRect(
 					globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos, //- (globalInv[inv].width / 2),
 					globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos, //- (globalInv[inv].height / 2),
 					globalInv[inv].width - globalInv[inv].xCrunch, 
 					globalInv[inv].height - globalInv[inv].yCrunch
 				);
+
+					//console.log("DRAWING RECTANGLE");
 			}
+			scaleRect(
+				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * traySize, 
+				globalInv[inv].yPos + globalInv[inv].sprite.height + 2, 
+				traySize, 
+				traySize
+			);
 		}
 
 		function insertInventory(itemIdx, targInv, isVert){			
@@ -394,7 +414,8 @@
 					targInv.contents[ins][insertPoint] = newBlock;
 					break;
 				}
-			}			
+			}	
+			//console.log("ADDING TO INVENTORY");		
 		}
 
 
@@ -412,6 +433,8 @@
 
 		function scaleRect(rectX, rectY, recWid, recHgt) {
 			ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(recWid), scalePx(recHgt));
+
+			//console.log("RECTANGLE DRAWN: With FILL: " + ctxGame.fillStyle + " and STROKE: " + ctxGame.strokeStyle);
 		}
 
 
@@ -421,12 +444,16 @@
 
 			canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
 			canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
+			ctxGame.strokeStyle ="#000000";
+			ctxGame.fillStyle = "#000000";
 			ctxGame.imageSmoothingEnabled = false; 
 
-			ctxGame.beginPath();
-			ctxGame.moveTo(canvas.width / 2, 0);
-			ctxGame.lineTo(canvas.width /2, canvas.height);
-			ctxGame.stroke();
+			/* ctxGame.beginPath();
+				ctxGame.moveTo(canvas.width / 2, 0);
+				ctxGame.lineTo(canvas.width /2, canvas.height);
+				ctxGame.stroke(); */
+
+
 		}
 
 		function changeScale(){
@@ -435,7 +462,7 @@
 			if (inputState["zbugUp"][1] == "tap"){
 				modifier = 1;
 			}
-			if (inputState["zzbugDown"][1] == "tap") {
+			if (inputState["z2bugDown"][1] == "tap") {
 				modifier = -1;
 			}
 
@@ -453,7 +480,7 @@
 
 
 //Last minute initializations
-	//			  function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor){
+	//			  function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor, anchorMod){
 		globalInv.push(new Inventory("Hearth", testImg, 48, 60, traySize * 3, traySize * 2, 8, 10, [9, 19], [0, 2]));
 
 		itemLog.push(new Item("Junk", junkImg, "bad", "0", "50"));
@@ -466,7 +493,7 @@
 
 //End of last calls
 
-
+//console.log("DING DING");
 
 	function gameLoop(){
 		now = performance.now();
@@ -492,23 +519,28 @@
 			drawItems();
 
 			if (debugMode) {
-			carpenter(0);
+			
+				carpenter(0);
 
-			ctxGame.strokeStyle ="#000000";
-			ctxGame.fillStyle = "#000000";
+			//ctxGame.strokeStyle ="#000000";
+			//ctxGame.fillStyle = "#000000";
 
-			ctxGame.fillText("X: " + globalInv[0].xPos + "Y: " + globalInv[0].yPos, globalInv[0].width, globalInv[0].height);
+			ctxGame.fillText("X: " + globalInv[0].xPos + " Y: " + globalInv[0].yPos, 
+								scalePx(globalInv[0].xPos), 
+								scalePx(globalInv[0].yPos)
+							);
 
-			ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(20), scalePx(20));
-			ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(20), scalePx(30));
-			ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(20), scalePx(40));
-			ctxGame.fillText("[Right]: "     + inputState["rButton"] + " >" + inputKeys["rButton"], scalePx(20), scalePx(50));
-			ctxGame.fillText("[Up]: "        + inputState["uButton"] + " >" + inputKeys["uButton"], scalePx(20), scalePx(60));
-			ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(20), scalePx(70));
-			ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(20), scalePx(80));
-			ctxGame.fillText("[Downscale]: " + inputState["zzbugDown"] + " >" + inputKeys["zzbugDown"], scalePx(20), scalePx(90));
+			ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(10), scalePx(30));
+			ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(10), scalePx(40));
+			ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(10), scalePx(50));
+			ctxGame.fillText("[Right]: "     + inputState["rButton"] + " >" + inputKeys["rButton"], scalePx(10), scalePx(60));
+			ctxGame.fillText("[Up]: "        + inputState["uButton"] + " >" + inputKeys["uButton"], scalePx(10), scalePx(70));
+			ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(10), scalePx(80));
+			ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(10), scalePx(90));
+			ctxGame.fillText("[Downscale]: " + inputState["z2bugDown"] + " >" + inputKeys["z2bugDown"], scalePx(10), scalePx(100));
+			ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));
 
-			ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(100));
+			ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
 			}
 		}
 		
