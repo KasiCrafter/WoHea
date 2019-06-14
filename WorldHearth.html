@@ -44,6 +44,7 @@
 			trayImg.src = "tray.png";
 			var img = new Image();   // Create new img element	
 			var traySize = 15;
+			var blockSize = traySize;
 			var globalInv = [];
 			var localInv = [];
 			var itemLog = [];
@@ -163,17 +164,18 @@
 						insertPoint--;
 					}
 
-					if (inputState.rButton[1] == "tap" && insertPoint < (globalInv[0].width / traySize) - 1) {
+					if (inputState.rButton[1] == "tap" && insertPoint < Math.floor(globalInv[0].width / traySize) - 1) {
 						insertPoint++;
 					}
 
-					if (inputState.uButton[1] == "tap" && globalInv[0].capacity > globalInv[0].contents.length) {
+					if (inputState.uButton[1] == "tap") { //&& globalInv[0].capacity > globalInv[0].contents.length) {
 						insertInventory(0, 0, true);
 					}
 
 					if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
 						for (var p = 0; p < globalInv[0].contents.length; p++) {
 							if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
+
 								globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
 								break;
 
@@ -208,17 +210,17 @@
 			this.width = width || 0;
 			this.height = height || 0;
 			this.anchorMod = anchorMod || [0,0];
-			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1]];
+			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - height / 2];
 			this.contents = generateInv(this.height, this.width);
 			//console.log("INVENTORY OBJECT LOADED");
 		} 
 
 		function generateInv (height, width) { 
 			var pndInv = [];
-			for (var rw = 0; rw < height / traySize; rw++) {
+			for (var rw = 0; rw < height / blockSize; rw++) {
 				pndInv.push([]);
 
-				for (var clm = 0; clm < width / traySize; clm++) {	
+				for (var clm = 0; clm < width / blockSize; clm++) {	
 					pndInv[rw].push(0);
 				}	
 			}
@@ -275,105 +277,51 @@
 			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
 				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
+
+						if (!debugMode) {
 							ctxGame.strokeStyle ="#000000";
 							ctxGame.fillStyle = "#000000";
-							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].yPos || "??") + ", " + (globalInv[invs].contents[y][x].xPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
+							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
+						}
 
-							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
-								(globalInv[invs].contents.length - 1 >= y + 1 &&
-								globalInv[invs].contents[y][x].yPos == globalInv[invs].contents[y + 1][x].yPos + traySize &&
-								globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) {
-								globalInv[invs].contents[y][x].ySpeed = 0;
+						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
+
+								if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
+									(y - 1 >= 0 &&		
+									globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
+									globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) 
+								{
+									globalInv[invs].contents[y][x].ySpeed = 0;
+									console.log("BOP")
+								}
+
+								if (y - 1 >= 0) {
+									while (globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
+										   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
+									) {
+
+										globalInv[invs].contents[y][x].yPos += 1;
+										console.log("Square NEW: " + globalInv[invs].contents[y][x].xPos + ", " + globalInv[invs].contents[y][x].yPos);
+										console.log("Square OLD: " + globalInv[invs].contents[y - 1][x].xPos + ", " + globalInv[invs].contents[y - 1][x].yPos);
+
+									}
+								}
 							}
 
 							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
+
 						}
-						//hitboxHold = Object.assign({}, globalInv[invs].contents[blks]);
 
-					/*	for (var n = 0; n < globalInv[invs].contents.length - 1; n++) { //Find lowest block to collide with
-
-							if (hitCheckHold == -1 || (hitboxHold.yPos < globalInv[invs].contents[n].yPos &&
-								globalInv[invs].contents[n].yPos < globalInv[invs].anchor[1] + globalInv[invs].anchor[1].height &&
-								hitboxHold.xPos == globalInv[invs].contents[n].xPos &&
-								globalInv[invs].contents[n].ySpeed == 0)) {
-
-								hitCheckHold = Object.assign({}, globalInv[invs].contents[n]);
-
-							}
-							else if (hitCheckHold == -1 || (hitboxHold.xPos < globalInv[invs].contents[n].xPos &&
-								hitboxHold.yPos == globalInv[invs].contents[n].yPos &&
-								globalInv[invs].contents[n].xSpeed == 0)) {
-
-								hitCheckHold = Object.assign({}, globalInv[invs].contents[n]);
-
-							}
-						
-
-							if (hitboxHold.yPos <= globalInv[invs].anchor[1]) {
-								hitboxHold.yPos -= hitboxHold.ySpeed;
-								hitboxHold.ySpeed = 0;	
-							}
-
-							else if (hitCheckHold != -1 && 
-								hitboxHold.yPos <= hitCheckHold.yPos + traySize && 
-								hitboxHold.xPos == hitCheckHold.xPos &&
-								hitCheckHold.ySpeed == 0) {
-
-								hitboxHold.yPos -= hitboxHold.ySpeed;
-								hitboxHold.ySpeed = 0;	
-
-							}
-
-							hitboxHold.xPos += hitboxHold.xSpeed;
-							hitboxHold.yPos += hitboxHold.ySpeed;				
-
-							globalInv[invs].contents[blks] = hitboxHold;
-							globalInv[invs].contents[blks] = hitboxHold;
-
-
-							/*if (hitboxHold.yPos <= globalInv[invs].anchor[0]) {
-									hitboxHold.yPos -= hitboxHold.ySpeed;
-									hitboxHold.ySpeed = 0;	
-
-									globalInv[invs].contents[blks] = hitboxHold;
-									break;
-							}
-							else if (hitboxHold != globalInv[invs].contents[blks]) {
-
-								if ((hitboxHold.xPos == globalInv[invs].contents[n].xPos) &&
-									(hitboxHold.yPos <= globalInv[invs].contents[n].yPos + traySize)) {
-										hitboxHold.yPos -= hitboxHold.ySpeed;
-										hitboxHold.ySpeed = 0;		
-
-										globalInv[invs].contents[blks] = hitboxHold;
-										break;	
-								}
-
-								hitboxHold.xPos += hitboxHold.xSpeed;
-								hitboxHold.yPos += hitboxHold.ySpeed;
-							} */
-						
-
-
-							/*
-							if ((hitboxHold.xPos <= globalInv[invs].anchor[0] || hitboxHold.xPos <=globalInv[invs].contents[n].xPos) &&(hitboxHold.yPos <= globalInv[invs].anchor[1] || hitboxHold.yPos <=globalInv[invs].contents[n].yPos)){
-
-								globalInv[invs].contents[blks].yPos -= globalInv[invs].contents[blks].ySpeed;
-								globalInv[invs].contents[blks].ySpeed = 0;			
-							}
-
-							globalInv[invs].contents[blks].xPos += globalInv[invs].contents[blks].xSpeed;
-							globalInv[invs].contents[blks].yPos += globalInv[invs].contents[blks].ySpeed;
-							}*/ 
-					
+					}
 				}
 			}
-		}
+					
+
 
 		function drawInventories() {
 			for (var inv in globalInv) {
 
-				scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
+				//scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
 					//console.log("DRAWING INVENTORY SPRITE");
 				scaleRect(
 					globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos, //- (globalInv[inv].width / 2),
@@ -401,12 +349,12 @@
 			newBlock.yPos = targInv.sprite.height;
 
 			if (isVert) {
-				newBlock.ySpeed = -insertSpeed;
 				newBlock.xSpeed = 0;
+				newBlock.ySpeed = -insertSpeed;				
 			}
-			else {
+			else {				
 				newBlock.xSpeed = insertSpeed;
-				newBlock.xSpeed = 0;
+				newBlock.ySpeed = 0;
 			}
 
 			for (var ins = 0; ins < targInv.contents.length; ins++) {
@@ -480,8 +428,8 @@
 
 
 //Last minute initializations
-	//			  function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor, anchorMod){
-		globalInv.push(new Inventory("Hearth", testImg, 48, 60, traySize * 3, traySize * 2, 8, 10, [9, 19], [0, 2]));
+	//			  function Inventory(  name,  sprite, xPos, yPos, width,       height,       capacity, heat, anchor, anchorMod){
+		globalInv.push(new Inventory("Hearth", testImg, 48, 60, blockSize * 3, blockSize * 6,    8,     10,  [9, 19], [0, -2]));
 
 		itemLog.push(new Item("Junk", junkImg, "bad", "0", "50"));
 
@@ -505,6 +453,7 @@
 		}
 
 
+
 		if (!stop) {
 			frameCount++;
 
@@ -520,15 +469,15 @@
 
 			if (debugMode) {
 			
-				carpenter(0);
+			carpenter(0);
 
 			//ctxGame.strokeStyle ="#000000";
 			//ctxGame.fillStyle = "#000000";
 
-			ctxGame.fillText("X: " + globalInv[0].xPos + " Y: " + globalInv[0].yPos, 
-								scalePx(globalInv[0].xPos), 
-								scalePx(globalInv[0].yPos)
-							);
+			//ctxGame.fillText("X: " + globalInv[0].xPos + " Y: " + globalInv[0].yPos, 
+			//					scalePx(globalInv[0].xPos), 
+			//					scalePx(globalInv[0].yPos)
+			//				);
 
 			ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(10), scalePx(30));
 			ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(10), scalePx(40));
