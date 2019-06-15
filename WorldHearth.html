@@ -169,7 +169,8 @@
 					}
 
 					if (inputState.uButton[1] == "tap") { //&& globalInv[0].capacity > globalInv[0].contents.length) {
-						insertInventory(0, 0, true);
+					//           (itemIdx, targInv, isVert)
+						insertInventory(3, 0, true);
 					}
 
 					if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
@@ -193,6 +194,14 @@
 			var junkImg = new Image();
 			junkImg.src = "junk1.png";
 
+			var bunnImg = new Image();
+			bunnImg.src = "dustbunny.png";
+
+			var cornImg = new Image();
+			cornImg.src = "popcorn.png";
+
+			var imp1Img = new Image();
+			imp1Img.src = "imp1.png";
 
 //End Sprite Cutting Functions
 
@@ -278,14 +287,16 @@
 				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
 
-						if (!debugMode) {
+						if (!debugMode) { //Print contents of inventory outside of debug mode to avoid messiness
 							ctxGame.strokeStyle ="#000000";
 							ctxGame.fillStyle = "#000000";
 							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
 						}
 
+						//Check if object is a valid block and that it is moving
 						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
 
+								//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
 								if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
 									(y - 1 >= 0 &&		
 									globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
@@ -295,19 +306,20 @@
 									console.log("BOP")
 								}
 
+								//If contact is made another block, move block one pixel away until the collission is resolved
 								if (y - 1 >= 0) {
 									while (globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
 										   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
 									) {
 
 										globalInv[invs].contents[y][x].yPos += 1;
-										console.log("Square NEW: " + globalInv[invs].contents[y][x].xPos + ", " + globalInv[invs].contents[y][x].yPos);
-										console.log("Square OLD: " + globalInv[invs].contents[y - 1][x].xPos + ", " + globalInv[invs].contents[y - 1][x].yPos);
+										/* console.log("Square NEW: " + globalInv[invs].contents[y][x].xPos + ", " + globalInv[invs].contents[y][x].yPos);
+										console.log("Square OLD: " + globalInv[invs].contents[y - 1][x].xPos + ", " + globalInv[invs].contents[y - 1][x].yPos);*/
 
 									}
 								}
 							}
-
+							//If something's moving, move it to the correct distance according to its speed
 							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
 
 						}
@@ -332,6 +344,7 @@
 
 					//console.log("DRAWING RECTANGLE");
 			}
+			//Draw block selection cursor
 			scaleRect(
 				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * traySize, 
 				globalInv[inv].yPos + globalInv[inv].sprite.height + 2, 
@@ -342,6 +355,7 @@
 
 		function insertInventory(itemIdx, targInv, isVert){			
 			var newBlock = Object.assign({}, itemLog[itemIdx]);
+			//var newBlock = new itemLog[itemIdx]
 			targInv = globalInv[targInv];
 			isVert = isVert || false;
 
@@ -428,16 +442,20 @@
 
 
 //Last minute initializations
-	//			  function Inventory(  name,  sprite, xPos, yPos, width,       height,       capacity, heat, anchor, anchorMod){
+		//		  function Inventory(  name,  sprite, xPos, yPos, width,       height,       capacity, heat, anchor, anchorMod){
 		globalInv.push(new Inventory("Hearth", testImg, 48, 60, blockSize * 3, blockSize * 6,    8,     10,  [9, 19], [0, -2]));
 
-		itemLog.push(new Item("Junk", junkImg, "bad", "0", "50"));
+		//      Item(name, 		sprite, 	type, currCook, maxCook)
+		itemLog = [
+			new Item("Junk",    junkImg, 	"bad",	"0", 	"50"),
+			new Item("Imp",     imp1Img, 	"bad", 	"0", 	"6.6"),
+			new Item("Dstbuni",	bunnImg, 	"bad", 	"0", 	"5"),
+			new Item("Popcrn", 	cornImg, 	"meh", 	"0", 	"20")
 
-		//for (j = 0; j < 3; j++) {
-			//globalInv[0].contents.push(itemLog[0]); 
-		//}
 
-		//insertInventory(0, 0, true);
+		];
+
+
 
 //End of last calls
 
@@ -525,8 +543,9 @@
 
 
 			INTERACTIONS:
-
-
+				Multi-Blocks: blocks, when arranged together, Exodia and gain new properties/powers?
+				
+				Doodle Shapes: when arranging stable(?) blocks in a certain pattern, (same as above??)
 
 			*/
 
