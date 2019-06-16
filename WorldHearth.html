@@ -27,7 +27,8 @@
 				wButton : [false, "done"],
 				zbugUp : [false, "done"],
 				z2bugDown : [false, "done"],
-				z3bugExit : [false, "done"]
+				z3bugExit : [false, "done"],
+				z4bugSpecial : [false, "done"]
 			};
 			var inputKeys = {
 				aButton : "z", //Z by Default
@@ -35,16 +36,17 @@
 				lButton : "ArrowLeft", //Left Arrow Key
 				rButton : "ArrowRight", //Right Arrow Key
 				uButton : "ArrowUp", //Up Arrow Key
-				wButton : "ArrowDown", //Down Arrow Key
+				wButton : "ArrowDown", //Down Arrow Key				
 				zbugUp : "9",
 				z2bugDown : "0",
-				z3bugExit : "`"
+				z3bugExit : "`",
+				z4bugSpecial : "Control"
 			};
 			var trayImg = new Image();
 			trayImg.src = "tray.png";
 			var img = new Image();   // Create new img element	
-			var traySize = 15;
-			var blockSize = traySize;
+			var blockSize = 18;
+			var traySize = blockSize - 1;			
 			var globalInv = [];
 			var localInv = [];
 			var itemLog = [];
@@ -52,6 +54,10 @@
 			var insertSpeed = 2;
 			var hitBoxHold = {};
 			var hitCheckHold = {};
+
+
+
+			var debugInc = 0
 
 //End config options
 
@@ -91,127 +97,137 @@
 //
 
 //Start canvas delerations
-			var canvas = document.createElement("canvas");
-			canvas.id = "gameCanvas";
-			canvas.width = 160 * pixelScale;
-			canvas.height = 144 * pixelScale;
-			canvas.style.position = "center";
-			canvas.style.background = "white";
-			canvas.style.position = "relative";
-			canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
-			canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
+		var canvas = document.createElement("canvas");
+		canvas.id = "gameCanvas";
+		canvas.width = 160 * pixelScale;
+		canvas.height = 144 * pixelScale;
+		canvas.style.position = "center";
+		canvas.style.background = "white";
+		canvas.style.position = "relative";
+		canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
+		canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
 
-			var ctxGame = canvas.getContext("2d");
-			ctxGame.imageSmoothingEnabled = false;
+		var ctxGame = canvas.getContext("2d");
+		ctxGame.imageSmoothingEnabled = false;
 
-			ctxGame.font = (10 * pixelScale) + "px Arial";
+		ctxGame.font = (10 * pixelScale) + "px Arial";
 
-			var body = document.getElementsByTagName("body")[0];
-			body.appendChild(canvas);
+		var body = document.getElementsByTagName("body")[0];
+		body.appendChild(canvas);
 //End canvas declarations
 
 //Start Input Functions
 
-			document.addEventListener("keydown", inputHandler, false);
-			document.addEventListener("keyup", inputHandler, false);
-			canvas.addEventListener("mousedown", rebindControls, false);
-			//document.addEventListener("keypress", inputHandler, false);
+		document.addEventListener("keydown", inputHandler, false);
+		document.addEventListener("keyup", inputHandler, false);
+		canvas.addEventListener("mousedown", rebindControls, false);
+		//document.addEventListener("keypress", inputHandler, false);
+		
+		function inputHandler(event){
+			for(var input in inputKeys){
+				if (inputKeys[input] == event.key) {
+					inputState[input][0] = event.type == 'keydown';
+				}
+				if (inputState[input] == "rebinding" && event.type == 'keyup') {
+					inputKeys[input] = event.key;
+					inputState[input] = [false, "done"];
+					break;
+				}
+			}
 			
-			function inputHandler(event){
-				for(var input in inputKeys){
-					if (inputKeys[input] == event.key) {
-						inputState[input][0] = event.type == 'keydown';
-					}
-					if (inputState[input] == "rebinding" && event.type == 'keyup') {
-						inputKeys[input] = event.key;
-						inputState[input] = [false, "done"];
-						break;
-					}
-				}
-				
 
-				if (event.key == inputKeys["z3bugExit"] && event.type == 'keyup') {
-					debugMode = !debugMode;
+			if (event.key == inputKeys["z3bugExit"] && event.type == 'keyup') {
+				debugMode = !debugMode;
+			}
+		}
+
+		function inputProcess(){
+			for (var press in inputState) {
+				if (inputState[press][0] && inputState[press][1] == "done") {
+					inputState[press][1] = "tap";
+				}
+				else if (inputState[press][0] && inputState[press][1] == "tap") {
+					inputState[press][1] = "held";
+				}
+				else if (!inputState[press][0]) {
+					inputState[press][1] = "done";
 				}
 			}
+		}
 
-			function inputProcess(){
-				for (var press in inputState) {
-					if (inputState[press][0] && inputState[press][1] == "done") {
-						inputState[press][1] = "tap";
+		function rebindControls() {
+			debugMode = true;
+
+			for (var remap in inputState) {
+				inputState[remap] = "rebinding";
+				inputKeys[remap] = "[?]";				
+			}
+		}
+
+		function playerAction() {
+			if (!debugMode) {
+				if (inputState.lButton[1] == "tap" && insertPoint > 0) {
+					insertPoint--;
+				}
+
+				if (inputState.rButton[1] == "tap" && insertPoint < Math.floor(globalInv[0].width / traySize) - 1) {
+					insertPoint++;
+				}
+
+				if (inputState.z4bugSpecial[1] == "tap") {
+					if (debugInc + 1 <= itemLog.length - 1) {
+						debugInc++;
 					}
-					else if (inputState[press][0] && inputState[press][1] == "tap") {
-						inputState[press][1] = "held";
-					}
-					else if (!inputState[press][0]) {
-						inputState[press][1] = "done";
-					}
+					else if (debugInc + 1 > itemLog.length - 1)
+						debugInc = 0;
+
+					globalInv[0].temperature++;
+				}
+
+				if (inputState.uButton[1] == "tap") { //&& globalInv[0].capacity > globalInv[0].contents.length) {
+				//           (itemIdx, targInv, isVert)
+					insertInventory(debugInc, 0, true);
+				}
+
+				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
+					for (var p = 0; p < globalInv[0].contents.length; p++) {
+						if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
+
+							globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
+							break;
+
+						}
+					}					
 				}
 			}
-
-			function rebindControls() {
-				debugMode = true;
-
-				for (var remap in inputState) {
-					inputState[remap] = "rebinding";
-					inputKeys[remap] = "[?]";				
-				}
-			}
-
-			function playerAction() {
-				if (!debugMode) {
-					if (inputState.lButton[1] == "tap" && insertPoint > 0) {
-						insertPoint--;
-					}
-
-					if (inputState.rButton[1] == "tap" && insertPoint < Math.floor(globalInv[0].width / traySize) - 1) {
-						insertPoint++;
-					}
-
-					if (inputState.uButton[1] == "tap") { //&& globalInv[0].capacity > globalInv[0].contents.length) {
-					//           (itemIdx, targInv, isVert)
-						insertInventory(3, 0, true);
-					}
-
-					if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
-						for (var p = 0; p < globalInv[0].contents.length; p++) {
-							if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
-
-								globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
-								break;
-
-							}
-						}					
-					}
-				}
-			}
+		}
 //End Input Functions
 
 //Sprite Cutting Functions
-			var testImg = new Image();
-			testImg.src = "pot.png";
+		var testImg = new Image();
+		testImg.src = "pot.png";
 
-			var junkImg = new Image();
-			junkImg.src = "junk1.png";
+		var junkImg = new Image();
+		junkImg.src = "junk2.png";
 
-			var bunnImg = new Image();
-			bunnImg.src = "dustbunny.png";
+		var bunnImg = new Image();
+		bunnImg.src = "dustbunny.png";
 
-			var cornImg = new Image();
-			cornImg.src = "popcorn.png";
+		var cornImg = new Image();
+		cornImg.src = "popcorn.png";
 
-			var imp1Img = new Image();
-			imp1Img.src = "imp1.png";
+		var imp1Img = new Image();
+		imp1Img.src = "imp1.png";
 
 //End Sprite Cutting Functions
 
 //Items and inventory functions
 
-		function Inventory(name, sprite, xPos, yPos, width, height, capacity, heat, anchor, anchorMod){
+		function Inventory(name, sprite, xPos, yPos, width, height, heatFactor, temperature, anchor, anchorMod){
 			this.name = name || "NO NAME";
 			this.sprite = sprite || "NO IMAGE";
-			this.capacity = capacity || 1;
-			this.heat = heat || 1;
+			this.heatFactor = (heatFactor * 1.0) || 1;
+			this.temperature = (temperature * 1.0) || 0;
 			this.xPos = xPos || 0;
 			this.yPos = yPos || 0;
 			this.xCrunch = 0;
@@ -279,55 +295,40 @@
 			//console.log("DRAWING ITEMS!");
 		}
 
-		function itemPhysics() {
-			hitBoxHold = -1;
-			hitCheckHold = -1;
 
-			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
-				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
-					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
+		function drawHeat(inv) {		
+			var percent = inv.temperature / inv.heatFactor;
+			var multiplier = 1;
 
-						if (!debugMode) { //Print contents of inventory outside of debug mode to avoid messiness
-							ctxGame.strokeStyle ="#000000";
-							ctxGame.fillStyle = "#000000";
-							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
-						}
-
-						//Check if object is a valid block and that it is moving
-						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
-
-								//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
-								if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
-									(y - 1 >= 0 &&		
-									globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
-									globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) 
-								{
-									globalInv[invs].contents[y][x].ySpeed = 0;
-									console.log("BOP")
-								}
-
-								//If contact is made another block, move block one pixel away until the collission is resolved
-								if (y - 1 >= 0) {
-									while (globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
-										   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
-									) {
-
-										globalInv[invs].contents[y][x].yPos += 1;
-										/* console.log("Square NEW: " + globalInv[invs].contents[y][x].xPos + ", " + globalInv[invs].contents[y][x].yPos);
-										console.log("Square OLD: " + globalInv[invs].contents[y - 1][x].xPos + ", " + globalInv[invs].contents[y - 1][x].yPos);*/
-
-									}
-								}
-							}
-							//If something's moving, move it to the correct distance according to its speed
-							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
-
-						}
-
-					}
-				}
+			while (percent >= 1) {
+				percent = percent - 1;
+				multiplier++;
 			}
-					
+
+			var meterHeight = inv.height * percent;
+			var barY = inv.yPos - blockSize + 6;
+			var barX = inv.xPos - blockSize / 2;
+			var barWidth = blockSize / 4	;
+
+			scaleText(multiplier + "x", barX - blockSize, barY + inv.height)
+
+			//scaleRect(rectX, rectY, recWid, recHgt)
+			scaleRect(
+				barX, 
+				barY, 
+				barWidth, 
+				inv.height
+			);
+
+			scaleRect(
+				barX, 
+				barY + inv.height - meterHeight, 
+				barWidth, 
+				meterHeight,
+				true
+			);
+
+		}
 
 
 		function drawInventories() {
@@ -346,12 +347,63 @@
 			}
 			//Draw block selection cursor
 			scaleRect(
-				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * traySize, 
-				globalInv[inv].yPos + globalInv[inv].sprite.height + 2, 
+				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * blockSize, 
+				globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
 				traySize, 
 				traySize
 			);
 		}
+
+
+		function itemPhysics() {
+			hitBoxHold = -1;
+			hitCheckHold = -1;
+
+			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
+				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
+					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
+
+						if (debugMode) { //Print contents of inventory outside of debug mode to avoid messiness
+							ctxGame.strokeStyle ="#000000";
+							ctxGame.fillStyle = "#000000";
+							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
+						}
+
+						//Check if object is a valid block and that it is moving
+						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
+
+							//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
+							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
+								(y - 1 >= 0 &&		
+								globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
+								globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) 
+							{
+								globalInv[invs].contents[y][x].ySpeed = 0;
+								console.log("BOP")
+							}
+
+							//If contact is made another block, move block one pixel away until the collission is resolved
+							if (y - 1 >= 0) {
+								while (globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
+									   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
+								) {
+
+									globalInv[invs].contents[y][x].yPos += 1;
+									/* console.log("Square NEW: " + globalInv[invs].contents[y][x].xPos + ", " + globalInv[invs].contents[y][x].yPos);
+									console.log("Square OLD: " + globalInv[invs].contents[y - 1][x].xPos + ", " + globalInv[invs].contents[y - 1][x].yPos);*/
+
+									}
+								}
+						}
+							//If something's moving, move it to the correct distance according to its speed
+							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
+
+					}
+
+				}
+			}
+		}
+					
 
 		function insertInventory(itemIdx, targInv, isVert){			
 			var newBlock = Object.assign({}, itemLog[itemIdx]);
@@ -360,7 +412,7 @@
 			isVert = isVert || false;
 
 			newBlock.xPos = targInv.anchor[0] + (traySize * insertPoint);
-			newBlock.yPos = targInv.sprite.height;
+			newBlock.yPos = canvas.height / pixelScale - blockSize * 2 - targInv.yPos + targInv.anchor[1]; //targInv.sprite.height;
 
 			if (isVert) {
 				newBlock.xSpeed = 0;
@@ -380,8 +432,6 @@
 			//console.log("ADDING TO INVENTORY");		
 		}
 
-
-
 //End item/inventory objects/functions
 
 //Screen Functions
@@ -393,10 +443,19 @@
 			ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
 		}
 
-		function scaleRect(rectX, rectY, recWid, recHgt) {
-			ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(recWid), scalePx(recHgt));
+		function scaleRect(rectX, rectY, recWid, recHgt, doFill) {
+			if (doFill) {
+				ctxGame.fillRect(scalePx(rectX), scalePx(rectY), scalePx(recWid), scalePx(recHgt));
+			}
+			else {
+				ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(recWid), scalePx(recHgt));
+			}
 
 			//console.log("RECTANGLE DRAWN: With FILL: " + ctxGame.fillStyle + " and STROKE: " + ctxGame.strokeStyle);
+		}
+
+		function scaleText(text, posX, posY) {
+			ctxGame.fillText(text, scalePx(posX), scalePx(posY));
 		}
 
 
@@ -442,21 +501,18 @@
 
 
 //Last minute initializations
-		//		  function Inventory(  name,  sprite, xPos, yPos, width,       height,       capacity, heat, anchor, anchorMod){
-		globalInv.push(new Inventory("Hearth", testImg, 48, 60, blockSize * 3, blockSize * 6,    8,     10,  [9, 19], [0, -2]));
+	//		  function Inventory(  name,  sprite, xPos, yPos, width,       height,       heatFactor, temperature, anchor, anchorMod){
+	globalInv.push(new Inventory("Hearth", testImg, 48, 40, blockSize * 3, blockSize * 3,    100,          0,       [9, 19], [-2, -2]));
 
-		//      Item(name, 		sprite, 	type, currCook, maxCook)
-		itemLog = [
-			new Item("Junk",    junkImg, 	"bad",	"0", 	"50"),
-			new Item("Imp",     imp1Img, 	"bad", 	"0", 	"6.6"),
-			new Item("Dstbuni",	bunnImg, 	"bad", 	"0", 	"5"),
-			new Item("Popcrn", 	cornImg, 	"meh", 	"0", 	"20")
-
-
-		];
+	//      Item(name, 		sprite, 	type, currCook, maxCook)
+	itemLog = [
+		new Item("Junk",    junkImg, 	"bad",	"0", 	"50"),
+		new Item("Imp",     imp1Img, 	"bad", 	"0", 	"6.6"),
+		new Item("Dstbuni",	bunnImg, 	"bad", 	"0", 	"5"),
+		new Item("Popcrn", 	cornImg, 	"meh", 	"0", 	"20")
 
 
-
+	];
 //End of last calls
 
 //console.log("DING DING");
@@ -484,6 +540,7 @@
 			itemPhysics();
 			drawInventories();
 			drawItems();
+			drawHeat(globalInv[0]);
 
 			if (debugMode) {
 			
@@ -539,6 +596,8 @@
 
 				Ice: When sizzling, reduces heat in the container. Once cooked, it turns into water, which GREATLY impedes flame 	growth for as long as it sizzles. Critically so. Turns to steam in extreme heat.
 
+				PURE HEAT: extracts heat directly form the vessel into block form. Dissapears/breaks as soon as it cools down.
+
 
 
 
@@ -546,6 +605,10 @@
 				Multi-Blocks: blocks, when arranged together, Exodia and gain new properties/powers?
 				
 				Doodle Shapes: when arranging stable(?) blocks in a certain pattern, (same as above??)
+
+			WaAYS OF PLAY:
+
+			Farm Blocks: The player only has as many blocks as they have "captured" from the field. Other than that, they'd get a default block that's not all that powerful.
 
 			*/
 
