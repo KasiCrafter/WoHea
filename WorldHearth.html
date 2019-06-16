@@ -16,48 +16,48 @@
 	<body onload="gameLoop()">
 		<script>
 //Start config options
-			var pixelScale = 3;
-			var bgColor = "#d7e894";
-			var inputState = {
-				aButton : [false, "done"],
-				bButton : [false, "done"],
-				lButton : [false, "done"],
-				rButton : [false, "done"],
-				uButton : [false, "done"],
-				wButton : [false, "done"],
-				zbugUp : [false, "done"],
-				z2bugDown : [false, "done"],
-				z3bugExit : [false, "done"],
-				z4bugSpecial : [false, "done"]
-			};
-			var inputKeys = {
-				aButton : "z", //Z by Default
-				bButton : "x", //X by default
-				lButton : "ArrowLeft", //Left Arrow Key
-				rButton : "ArrowRight", //Right Arrow Key
-				uButton : "ArrowUp", //Up Arrow Key
-				wButton : "ArrowDown", //Down Arrow Key				
-				zbugUp : "9",
-				z2bugDown : "0",
-				z3bugExit : "`",
-				z4bugSpecial : "Control"
-			};
-			var trayImg = new Image();
-			trayImg.src = "tray.png";
-			var img = new Image();   // Create new img element	
-			var blockSize = 18;
-			var traySize = blockSize - 1;			
-			var globalInv = [];
-			var localInv = [];
-			var itemLog = [];
-			var insertPoint = 0;
-			var insertSpeed = 2;
-			var hitBoxHold = {};
-			var hitCheckHold = {};
+		var pixelScale = 3;
+		var bgColor = "#d7e894";
+		var inputState = {
+			aButton : [false, "done"],
+			bButton : [false, "done"],
+			lButton : [false, "done"],
+			rButton : [false, "done"],
+			uButton : [false, "done"],
+			wButton : [false, "done"],
+			zbugUp : [false, "done"],
+			z2bugDown : [false, "done"],
+			z3bugExit : [false, "done"],
+			z4bugSpecial : [false, "done"]
+		};
+		var inputKeys = {
+			aButton : "z", //Z by Default
+			bButton : "x", //X by default
+			lButton : "ArrowLeft", //Left Arrow Key
+			rButton : "ArrowRight", //Right Arrow Key
+			uButton : "ArrowUp", //Up Arrow Key
+			wButton : "ArrowDown", //Down Arrow Key				
+			zbugUp : "9",
+			z2bugDown : "0",
+			z3bugExit : "`",
+			z4bugSpecial : "Control"
+		};
+		var trayImg = new Image();
+		trayImg.src = "tray.png";
+		var img = new Image();   // Create new img element	
+		var blockSize = 18;
+		var traySize = blockSize - 1;			
+		var globalInv = [];
+		var localInv = [];
+		var itemLog = [];
+		var insertPoint = 0;
+		var insertSpeed = 2;
+		var hitBoxHold = {};
+		var hitCheckHold = {};
 
 
 
-			var debugInc = 0
+		var debugInc = 0
 
 //End config options
 
@@ -218,7 +218,6 @@
 
 		var imp1Img = new Image();
 		imp1Img.src = "imp1.png";
-
 //End Sprite Cutting Functions
 
 //Items and inventory functions
@@ -431,7 +430,6 @@
 			}	
 			//console.log("ADDING TO INVENTORY");		
 		}
-
 //End item/inventory objects/functions
 
 //Screen Functions
@@ -499,6 +497,20 @@
 		}
 //End screen functions
 
+//Gameplay Mechanic Methods
+
+	function heatCheck(inv) {
+		for (var row in inv.contents) {
+			for (var col in inv.contents[row]){}
+
+		}
+
+
+	}
+
+
+
+//End of game mechanics
 
 //Last minute initializations
 	//		  function Inventory(  name,  sprite, xPos, yPos, width,       height,       heatFactor, temperature, anchor, anchorMod){
@@ -515,7 +527,6 @@
 	];
 //End of last calls
 
-//console.log("DING DING");
 
 	function gameLoop(){
 		now = performance.now();
@@ -544,27 +555,27 @@
 
 			if (debugMode) {
 			
-			carpenter(0);
+				carpenter(0);
 
-			//ctxGame.strokeStyle ="#000000";
-			//ctxGame.fillStyle = "#000000";
+				//ctxGame.strokeStyle ="#000000";
+				//ctxGame.fillStyle = "#000000";
 
-			//ctxGame.fillText("X: " + globalInv[0].xPos + " Y: " + globalInv[0].yPos, 
-			//					scalePx(globalInv[0].xPos), 
-			//					scalePx(globalInv[0].yPos)
-			//				);
+				//ctxGame.fillText("X: " + globalInv[0].xPos + " Y: " + globalInv[0].yPos, 
+				//					scalePx(globalInv[0].xPos), 
+				//					scalePx(globalInv[0].yPos)
+				//				);
 
-			ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(10), scalePx(30));
-			ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(10), scalePx(40));
-			ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(10), scalePx(50));
-			ctxGame.fillText("[Right]: "     + inputState["rButton"] + " >" + inputKeys["rButton"], scalePx(10), scalePx(60));
-			ctxGame.fillText("[Up]: "        + inputState["uButton"] + " >" + inputKeys["uButton"], scalePx(10), scalePx(70));
-			ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(10), scalePx(80));
-			ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(10), scalePx(90));
-			ctxGame.fillText("[Downscale]: " + inputState["z2bugDown"] + " >" + inputKeys["z2bugDown"], scalePx(10), scalePx(100));
-			ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));
+				ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(10), scalePx(30));
+				ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(10), scalePx(40));
+				ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(10), scalePx(50));
+				ctxGame.fillText("[Right]: "     + inputState["rButton"] + " >" + inputKeys["rButton"], scalePx(10), scalePx(60));
+				ctxGame.fillText("[Up]: "        + inputState["uButton"] + " >" + inputKeys["uButton"], scalePx(10), scalePx(70));
+				ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(10), scalePx(80));
+				ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(10), scalePx(90));
+				ctxGame.fillText("[Downscale]: " + inputState["z2bugDown"] + " >" + inputKeys["z2bugDown"], scalePx(10), scalePx(100));
+				ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));
 
-			ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
+				ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
 			}
 		}
 		
@@ -574,6 +585,27 @@
 
 
 			/* Ideas:
+			GAMEPLAY RUNDOWN:
+			Objective: make (ORDER UP), destroy (skull), or empty (CLEANUP) out a kind of block from the pot (pre determined layouts?)
+
+			The Pot: serves as the main vessel where the game takes place. 			
+				>Everything in this pot will be subject to a heat tick, which depends on the kind of pot; some heat things up faster, some slower, some in major bursts, and some which never stop heating up.
+				
+				>Every block inside the pot either takes in or outputs energy from the pot. When some blocks take in enough energy, they will have a special "Sizzle" effect, which varies from block to block.
+
+
+			Heat gauge:it sits next to the pot and serves as the Energy modifier for the pot. Starting at 1x effeciency, which describes the speed of the heat "ticks" the pot does every frame. 
+				>Adding enough heat to the pot will fill the gauge, restting the bar and adding 1 to the multiplier.
+
+				>As blocks expend and absorb heat, this meter will go up or down. Pots have a maximum amount of heat before they EXPLODE, and having a temperature of 0 puts the player in [[PERIL]] unless they heat back up FAST.
+
+
+			Blocks: They can absorb heat and tey can break. They're stored on the one-dimensional belt, 
+
+			The Belt: where all the player's blocks are stored. They can scroll left and right, or hold a button to strafe; changing blocks without the cursor moving positions. 
+				>All the rules blocks have in the furnace/pot applies: heat, breaking, and movement. Adjacent tiles will absorb//expel heat depending on what's next to them!
+
+
 			ENEMIES:
 			SwapImp: If next to an item on the hot bar, it will swap with the middle block before the process occurs.
 					 Once inside the hearth, they'll start to simmer. Once cooked, they spit out whatever is next to them
@@ -596,6 +628,8 @@
 
 				Ice: When sizzling, reduces heat in the container. Once cooked, it turns into water, which GREATLY impedes flame 	growth for as long as it sizzles. Critically so. Turns to steam in extreme heat.
 
+				GluBall: when shot out and hits another block, it becomes a copy of it, with both splitting some of the heat/damage between them, and then instantly bounces in the direction it was fired from. If it hits the pot's border, it'll bounce back with a LOT of heat on it. Sizzle effect is turning into a junk block.
+
 				PURE HEAT: extracts heat directly form the vessel into block form. Dissapears/breaks as soon as it cools down.
 
 
@@ -609,6 +643,8 @@
 			WaAYS OF PLAY:
 
 			Farm Blocks: The player only has as many blocks as they have "captured" from the field. Other than that, they'd get a default block that's not all that powerful.
+
+			Select Your Fighter: players can see the challenge beforehand and decide what blocks/pots they want to use to overcome it?
 
 			*/
 
