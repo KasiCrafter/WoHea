@@ -221,12 +221,13 @@
 //End Sprite Cutting Functions
 
 //Items and inventory functions
-
-		function Inventory(name, sprite, xPos, yPos, width, height, heatFactor, temperature, anchor, anchorMod){
+	//Inventory Functions
+		function Inventory(name, sprite, xPos, yPos, width, height, heatFactor, temperature, tickRate, anchor, anchorMod){
 			this.name = name || "NO NAME";
 			this.sprite = sprite || "NO IMAGE";
 			this.heatFactor = (heatFactor * 1.0) || 1;
 			this.temperature = (temperature * 1.0) || 0;
+			this.tickRate = tickRate || 1;
 			this.xPos = xPos || 0;
 			this.yPos = yPos || 0;
 			this.xCrunch = 0;
@@ -236,8 +237,10 @@
 			this.anchorMod = anchorMod || [0,0];
 			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - height / 2];
 			this.contents = generateInv(this.height, this.width);
+			this.timeCooking = 0;
 			//console.log("INVENTORY OBJECT LOADED");
 		} 
+
 
 		function generateInv (height, width) { 
 			var pndInv = [];
@@ -252,52 +255,36 @@
 						//console.log("INVENTORY MATRIX READY");
 			return pndInv;	
 		}
-		
-		function Item(name, sprite, type, currCook, maxCook) {
-			this.name = name || "???";
-			this.type = type || "NULL";
-			this.sprite = sprite || trayImg;
-			this.currCook = currCook || 0;
-			this.maxCook = maxCook || 0;
-			this.xPos = 0;
-			this.yPos = 0;
-			this.xSpeed = 0;
-			this.ySpeed = 0;
-			this.InvEffect = 0;
-			this.HrtEffect = 0;
-			this.BllwEffect = 0;
-			this.ThrEffect = 0;
 
-			//console.log("ITEM OBJECT GOOD TO GO");
-		}
 
-		function drawItems() {
-			for (var box in globalInv) {
+		function drawInventories() {
+			for (var inv in globalInv) {
 
-				if (globalInv[box].contents.length <= 0) {
-					break;
-				}
+				//scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
+					//console.log("DRAWING INVENTORY SPRITE");
+				scaleRect(
+					globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos, //- (globalInv[inv].width / 2),
+					globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos, //- (globalInv[inv].height / 2),
+					globalInv[inv].width - globalInv[inv].xCrunch, 
+					globalInv[inv].height - globalInv[inv].yCrunch
+				);
 
-				for (var i = 0; i < globalInv[box].contents.length; i++) {
-					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
-						if (globalInv[box].contents[i][v] != 0) {
-							scaleImg(
-								globalInv[box].contents[i][v].sprite,
-								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
-								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
-							);
-						}
-					}
-				}
+					//console.log("DRAWING RECTANGLE");
 			}
-
-			//console.log("DRAWING ITEMS!");
+			//Draw block selection cursor
+			scaleRect(
+				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * blockSize, 
+				globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
+				traySize, 
+				traySize
+			);
 		}
 
 
-		function drawHeat(inv) {		
-			var percent = inv.temperature / inv.heatFactor;
-			var multiplier = 1;
+		function drawHeat(inv) {
+			var getter =  calcMultiplier(inv);			
+			var multiplier = getter[0];
+			var percent = getter[1]
 
 			while (percent >= 1) {
 				percent = percent - 1;
@@ -330,27 +317,73 @@
 		}
 
 
-		function drawInventories() {
-			for (var inv in globalInv) {
+		function insertInventory(itemIdx, targInv, isVert){			
+			//var newBlock = Object.assign({}, itemLog[itemIdx]);
+			var newBlock = Object.create(itemLog[itemIdx])
+			targInv = globalInv[targInv];
+			isVert = isVert || false;
 
-				//scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
-					//console.log("DRAWING INVENTORY SPRITE");
-				scaleRect(
-					globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos, //- (globalInv[inv].width / 2),
-					globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos, //- (globalInv[inv].height / 2),
-					globalInv[inv].width - globalInv[inv].xCrunch, 
-					globalInv[inv].height - globalInv[inv].yCrunch
-				);
+			newBlock.xPos = targInv.anchor[0] + (traySize * insertPoint);
+			newBlock.yPos = canvas.height / pixelScale - blockSize * 2 - targInv.yPos + targInv.anchor[1]; //targInv.sprite.height;
 
-					//console.log("DRAWING RECTANGLE");
+			if (isVert) {
+				newBlock.xSpeed = 0;
+				newBlock.ySpeed = -insertSpeed;				
 			}
-			//Draw block selection cursor
-			scaleRect(
-				globalInv[inv].anchor[0] + globalInv[inv].anchorMod[0] + globalInv[inv].xPos + insertPoint * blockSize, 
-				globalInv[inv].anchor[1] + globalInv[inv].anchorMod[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
-				traySize, 
-				traySize
-			);
+			else {				
+				newBlock.xSpeed = insertSpeed;
+				newBlock.ySpeed = 0;
+			}
+
+			for (var ins = 0; ins < targInv.contents.length; ins++) {
+				if (targInv.contents[ins][insertPoint] == 0) {
+					targInv.contents[ins][insertPoint] = newBlock;
+					break;
+				}
+			}	
+			//console.log("ADDING TO INVENTORY");		
+		}
+	//Item functions
+		function Item(name, sprite, type, currCook, maxCook) {
+			this.name = name || "???";
+			this.type = type || "NULL";
+			this.sprite = sprite || trayImg;
+			this.currCook = currCook || 0;
+			this.maxCook = maxCook || 0;
+			this.xPos = 0;
+			this.yPos = 0;
+			this.xSpeed = 0;
+			this.ySpeed = 0;
+			this.invEffect = 0;
+			this.heatEffect = 0;
+			this.breakEffect = 0;
+			this.bumpEffect = 0;
+
+			//console.log("ITEM OBJECT GOOD TO GO");
+		}
+
+
+		function drawItems() {
+			for (var box in globalInv) {
+
+				if (globalInv[box].contents.length <= 0) {
+					break;
+				}
+
+				for (var i = 0; i < globalInv[box].contents.length; i++) {
+					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
+						if (globalInv[box].contents[i][v] != 0) {
+							scaleImg(
+								globalInv[box].contents[i][v].sprite,
+								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
+								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
+							);
+						}
+					}
+				}
+			}
+
+			//console.log("DRAWING ITEMS!");
 		}
 
 
@@ -401,35 +434,7 @@
 
 				}
 			}
-		}
-					
-
-		function insertInventory(itemIdx, targInv, isVert){			
-			var newBlock = Object.assign({}, itemLog[itemIdx]);
-			//var newBlock = new itemLog[itemIdx]
-			targInv = globalInv[targInv];
-			isVert = isVert || false;
-
-			newBlock.xPos = targInv.anchor[0] + (traySize * insertPoint);
-			newBlock.yPos = canvas.height / pixelScale - blockSize * 2 - targInv.yPos + targInv.anchor[1]; //targInv.sprite.height;
-
-			if (isVert) {
-				newBlock.xSpeed = 0;
-				newBlock.ySpeed = -insertSpeed;				
-			}
-			else {				
-				newBlock.xSpeed = insertSpeed;
-				newBlock.ySpeed = 0;
-			}
-
-			for (var ins = 0; ins < targInv.contents.length; ins++) {
-				if (targInv.contents[ins][insertPoint] == 0) {
-					targInv.contents[ins][insertPoint] = newBlock;
-					break;
-				}
-			}	
-			//console.log("ADDING TO INVENTORY");		
-		}
+		}					
 //End item/inventory objects/functions
 
 //Screen Functions
@@ -499,22 +504,87 @@
 
 //Gameplay Mechanic Methods
 
-	function heatCheck(inv) {
-		for (var row in inv.contents) {
-			for (var col in inv.contents[row]){}
+	function calcMultiplier(inv) {
+		var percent = inv.temperature / inv.heatFactor;
+		var multiplier = 1;
 
+		while (percent >= 1) {
+			percent = percent - 1;
+			multiplier++;
 		}
 
+		return [multiplier, percent]
+	}
 
+	function timerCheck(startTime, duration) {
+		var timerDelta = deltaTime - startTime;
+
+		if (timerDelta <= duration) {
+			return 
+		}
 	}
 
 
+	function tickPot() {
+		for (stuff in globalInv) {
+			var inv = globalInv[stuff]
 
+			if (inv.timeCooking == 0) {
+				inv.timeCooking = now;
+				return false
+			}
+
+			//inv.temperature++;
+
+			var multiplier = calcMultiplier(inv)[0];
+
+			if (timerCheck(inv.timeCooking, 1000)) {
+				inv.timeCooking = now;		
+
+				for (var row in inv.contents) {
+					for (var col in inv.contents[row]){
+						inv.contents[row][col].currCook += inv.tickRate;
+
+						if (inv.contents[row][col].currCook >= inv.contents[row][col].maxCook) {
+							inv.contents[row][col].heatEffect();
+						}
+					}
+				}
+			}
+		}
+	}
 //End of game mechanics
 
 //Last minute initializations
-	//		  function Inventory(  name,  sprite, xPos, yPos, width,       height,       heatFactor, temperature, anchor, anchorMod){
-	globalInv.push(new Inventory("Hearth", testImg, 48, 40, blockSize * 3, blockSize * 3,    100,          0,       [9, 19], [-2, -2]));
+	/*		  
+	function Inventory(
+		name,  
+		sprite, 
+		xPos, 
+		yPos, 
+		width,       
+		height,       
+		heatFactor, 
+		temperature, 
+		tickRate,
+		nchor, 
+		anchorMod
+	)*/
+	globalInv.push(
+		new Inventory(
+			"Hearth", 
+			testImg, 
+			48, 
+			40, 
+			blockSize * 3, 
+			blockSize * 3,    
+			1000,          
+			0,         
+			1,   
+			[9, 19], 
+			[-2, -2]
+		)
+	);
 
 	//      Item(name, 		sprite, 	type, currCook, maxCook)
 	itemLog = [
@@ -547,7 +617,7 @@
 			inputProcess();
 			playerAction();
 
-
+			tickPot();
 			itemPhysics();
 			drawInventories();
 			drawItems();
