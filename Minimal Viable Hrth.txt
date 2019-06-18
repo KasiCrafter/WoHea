@@ -1,4 +1,4 @@
 [x]1.) Two more blocks
-[ ]2.) Heat system on blocks
+[x]2.) Heat system on blocks
 [ ]3.) Heat effects on block break
 [ ]4.) Belt system
