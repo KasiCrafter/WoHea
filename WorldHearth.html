@@ -45,8 +45,9 @@
 		var trayImg = new Image();
 		trayImg.src = "tray.png";
 		var img = new Image();   // Create new img element	
-		var blockSize = 18;
-		var traySize = blockSize - 1;			
+		var blockSize = 16;
+		var blockPadding = 2;
+		var traySize = blockSize;			
 		var globalInv = [];
 		var localInv = [];
 		var itemLog = [];
@@ -111,6 +112,7 @@
 		ctxGame.imageSmoothingEnabled = false;
 
 		ctxGame.font = (10 * pixelScale) + "px Arial";
+		//ctxGame.lineCap = "square";
 
 		var body = document.getElementsByTagName("body")[0];
 		body.appendChild(canvas);
@@ -223,10 +225,11 @@
 
 //Items and inventory functions
 	//Inventory Functions
-		function Inventory(name, sprite, xPos, yPos, width, height, heatFactor, temperature, tickRate, anchor, anchorMod){
+		function Inventory(name, sprite, xPos, yPos, horzCap, vertCap, /*heatFactor*/ maxHeat, temperature, tickRate, anchor, anchorMod){
 			this.name = name || "NO NAME";
 			this.sprite = sprite || "NO IMAGE";
-			this.heatFactor = (heatFactor * 1.0) || 1;
+			//this.heatFactor = (heatFactor * 1.0) || 1;
+			this.maxHeat = (maxHeat * 1.0) || 100;
 			this.temperature = (temperature * 1.0) || 0;
 			this.tickRate = tickRate || 1;
 			this.orgTickRate = tickRate;
@@ -234,21 +237,23 @@
 			this.yPos = yPos || 0;
 			this.xCrunch = 0;
 			this.yCrunch = 0;
-			this.width = width || 0;
-			this.height = height || 0;
+			this.horzCap = horzCap || 0;
+			this.vertCap = vertCap || 0;
+			this.height =  vertCap * (blockSize + blockPadding) + blockPadding;
+			this.width = horzCap * (blockSize + blockPadding) + blockPadding;
 			this.anchorMod = anchorMod || [0,0];
-			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - height / 2];
-			this.contents = generateInv(this.height, this.width);
+			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - this.height / 2];
+			this.contents = generateInv(this.horzCap, this.vertCap);
 			this.timeCooking = 0;
 		} 
 
 
-		function generateInv (height, width) { 
+		function generateInv (xUnits, yUnits) { 
 			var pndInv = [];
-			for (var rw = 0; rw < height / blockSize; rw++) {
+			for (var rw = 0; rw < yUnits; rw++) {
 				pndInv.push([]);
 
-				for (var clm = 0; clm < width / blockSize; clm++) {	
+				for (var clm = 0; clm < xUnits; clm++) {	
 					pndInv[rw].push(0);
 				}	
 			}
@@ -271,30 +276,24 @@
 			}
 			//Draw block selection cursor
 			scaleRect(
-				globalInv[inv].anchor[0] + globalInv[inv].xPos + insertPoint * traySize, 
+				globalInv[inv].anchor[0] + globalInv[inv].xPos + insertPoint * (blockSize + blockPadding) + blockPadding, 
 				globalInv[inv].anchor[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
-				traySize, 
-				traySize
+				blockSize, 
+				blockSize
 			);
 		}
 
 
 		function drawHeat(inv) {
-			var getter =  calcMultiplier(inv);			
-			var multiplier = getter[0];
-			var percent = getter[1]
-
-			while (percent >= 1) {
-				percent = percent - 1;
-				multiplier++;
-			}
-
-			var meterHeight = inv.height * percent;
+			var meterHeight = inv.height * (inv.temperature / inv.maxHeat);
 			var barY = inv.yPos + inv.anchor[1];
 			var barX = inv.xPos - inv.anchor[0] - blockSize / 2;
-			var barWidth = blockSize / 4	;
+			var barWidth = (blockSize / 4) + (inv.maxHeat / inv.height) * 1; //blockSize / 4	;
 
-			scaleText(multiplier + "x", barX - blockSize, barY + inv.height)
+			//scaleText(multiplier + "x", barX - blockSize, barY + inv.height)
+			//scaleText(barY + inv.height - meterHeight, barX - blockSize, barY + inv.height);
+			//scaleText(inv.height - meterHeight, barX - blockSize, barY + inv.height + blockSize / 2);
+			//scaleText(meterHeight - ctxGame.lineWidth, barX - blockSize, barY + inv.height + blockSize);
 
 			scaleRect(
 				barX, 
@@ -319,7 +318,7 @@
 			targInv = globalInv[targInv];
 			isVert = isVert || false;
 
-			newBlock.xPos = targInv.anchor[0] + (traySize * insertPoint);
+			newBlock.xPos = targInv.anchor[0] + blockPadding + (blockPadding + blockSize) * insertPoint;
 			newBlock.yPos = targInv.yPos - targInv.anchor[1];
 
 			if (isVert) {
@@ -396,25 +395,28 @@
 						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
 
 							//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
-							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] ||
+							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding ||
 								(y - 1 >= 0 &&		
-								globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
+								globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding &&
 								globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) 
 							{
 								globalInv[invs].contents[y][x].ySpeed = 0;
+								//globalInv[invs].contents[y][x].yPos -= 1;
 								console.log("BOP")
 							}
 
 							//If contact is made another block, move block one pixel away until the collission is resolved
 							if (y - 1 >= 0) {
-								while (globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize &&
-									   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
-								) {
+								while (globalInv[invs].contents[y][x].yPos <= 
+									   globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding + 1
+									   &&
+									   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]) 
+								{								
 
 									globalInv[invs].contents[y][x].yPos += 1;
 
-									}
 								}
+							}
 						}
 							//If something's moving, move it to the correct distance according to its speed
 							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
@@ -435,12 +437,32 @@
 			ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
 		}
 
-		function scaleRect(rectX, rectY, recWid, recHgt, doFill) {
-			if (doFill) {
-				ctxGame.fillRect(scalePx(rectX), scalePx(rectY), scalePx(recWid) - scalePx(ctxGame.lineWidth), scalePx(recHgt) - scalePx(ctxGame.lineWidth));
+		function scaleRect(rectX, rectY, rectWid, rectHgt, doFill) {
+			//scaleText(rectHgt, rectX + blockSize, rectY + blockSize / 2)
+			if (rectWid - ctxGame.lineWidth <= rectWid){  
+				rectWid += ctxGame.lineWidth;
 			}
 			else {
-				ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(recWid) - scalePx(ctxGame.lineWidth), scalePx(recHgt) - scalePx(ctxGame.lineWidth));
+				rectWid -= ctxGame.lineWidth;
+			}
+
+			if (rectHgt - ctxGame.lineWidth <= rectHgt){  
+				rectHgt += ctxGame.lineWidth;
+			}
+			else {
+				rectHgt -= ctxGame.lineWidth;
+			}
+
+			
+			rectY -= 0.5;
+			rectX -= 0.5;
+
+
+			if (doFill) {
+				ctxGame.fillRect(scalePx(rectX), scalePx(rectY), scalePx(rectWid), scalePx(rectHgt));
+			}
+			else {
+				ctxGame.strokeRect(scalePx(rectX), scalePx(rectY), scalePx(rectWid), scalePx(rectHgt) );
 			}
 		}
 
@@ -485,7 +507,7 @@
 
 //Gameplay Mechanic Methods
 
-	function calcMultiplier(inv) {
+	/*function calcMultiplier(inv) {
 		var percent = inv.temperature / inv.heatFactor;
 		var multiplier = 1;
 
@@ -495,7 +517,7 @@
 		}
 
 		return [multiplier, percent]
-	}
+	}*/
 
 
 	function timerCheck(startTime, duration) {
@@ -519,15 +541,20 @@
 			}
 
 			if (!timerCheck(inv.timeCooking, inv.tickRate)){
-				console.log("SKIP");
+				//console.log("SKIP");
 				continue;
 			}
 
 			inv.timeCooking = now;	
 
-			inv.temperature++;
+			if (inv.temperature < inv.maxHeat) {
+				inv.temperature++;
+			}
+			else if (inv.temperature > inv.maxHeat) {
+				inv.temperature = inv.maxHeat;
+			}
 
-			var multiplier = calcMultiplier(inv)[0];
+			//var multiplier = calcMultiplier(inv)[0];
 								
 
 			for (var row in inv.contents) {
@@ -538,7 +565,7 @@
 						if (inv.contents[row][col].currCook >= inv.contents[row][col].maxCook) {
 							inv.contents[row][col].heatEffect(self);
 							inv.contents[row][col].currCook = 0;
-							console.log("SPICY MOVE! !");
+							//console.log("SPICY MOVE! !");
 						}
 
 					}
@@ -558,7 +585,7 @@
 		yPos, 
 		width,       
 		height,       
-		heatFactor, 
+		heatFactor, [max heat]
 		temperature, 
 		tickRate,
 		anchor, 
@@ -570,9 +597,9 @@
 			testImg, 
 			48, 
 			40, 
-			traySize * 4, 
-			traySize * 5,    
-			100,          
+			4, 
+			5,    
+			200,          
 			0,         
 			1,   
 			[9, 19], 
