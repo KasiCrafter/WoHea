@@ -73,6 +73,7 @@
 		var deltaTime = performance.now();
 		var frameBefore = 0;
 
+
 		function carpenter(couch) {
 			couch = globalInv[couch];
 
@@ -97,6 +98,21 @@
 				couch.yPos -= 1;
 			}
 		}
+
+
+		function ledger(currInv, a, b){
+			if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
+				var debugFontSize = (canvas.width / globalInv[currInv].horzCap) / 16;
+
+				ctxGame.save();			
+
+				ctxGame.font = scalePx(debugFontSize) + "px Monospace";
+
+				ctxGame.fillText("[" + (globalInv[currInv].contents[a][b].xPos || "??") + "," + (globalInv[currInv].contents[a][b].yPos || "??") + "]", scalePx((b * 3 * debugFontSize) + (10 * b)), scalePx(debugFontSize + a * debugFontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));
+
+				ctxGame.restore();
+			}			
+		}
 //
 
 //Start canvas delerations
@@ -108,7 +124,8 @@
 		canvas.style.background = "white";
 		canvas.style.position = "relative";
 		canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
-		canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
+		canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";		
+		
 
 		var ctxGame = canvas.getContext("2d");
 		ctxGame.imageSmoothingEnabled = false;
@@ -169,7 +186,7 @@
 		}
 
 		function playerAction() {
-			if (!debugMode) {
+			if (!debugMode || inputState.z4bugSpecial[1] == "held") {
 				if (inputState.lButton[1] == "tap" && insertPoint > 0) {
 					insertPoint--;
 				}
@@ -187,10 +204,6 @@
 
 					globalInv[0].temperature++;
 				}				
-
-				if (inputState.z4bugSpecial[1] == "tap") { 
-					debugMode = !debugMode;
-				}
 
 				if (inputState.uButton[1] == "tap") { 
 					insertInventory(debugInc, 0, true);
@@ -378,6 +391,18 @@
 								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
 							);
 						}
+
+
+						
+
+						if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
+							ledger(box, i, v);
+							/*ctxGame.strokeStyle ="#000000";
+							ctxGame.fillStyle = "#000000";
+							var fontSize = (canvas.width / globalInv[box].horzCap) / 16;
+							ctxGame.font = scalePx(fontSize) + "px Monospace";
+							ctxGame.fillText("[" + (globalInv[box].contents[i][v].xPos || "??") + "," + (globalInv[box].contents[i][v].yPos || "??") + "]", scalePx((v * 3 * fontSize) + (10 * v)), scalePx(fontSize + i * fontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));*/
+						}
 					}
 				}
 			}
@@ -392,7 +417,7 @@
 				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
 
-						if (debugMode) { //Print contents of inventory outside of debug mode to avoid messiness
+						if (debugMode && inputState.bButton[1] == "held") { //Print contents of inventory in debug mode
 							ctxGame.strokeStyle ="#000000";
 							ctxGame.fillStyle = "#000000";
 							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
@@ -481,6 +506,7 @@
 		function clearScreen(){
 			ctxGame.fillStyle = bgColor;
 			ctxGame.fillRect(0, 0, canvas.width, canvas.height);
+			ctxGame.font = (10 * pixelScale) + "px Arial";
 
 			canvas.style.left = (window.innerWidth/2 - canvas.width/2) +"px"; 
 			canvas.style.top = (window.innerHeight/2 - canvas.height/2) + "px";
@@ -513,18 +539,6 @@
 //End screen functions
 
 //Gameplay Mechanic Methods
-
-	/*function calcMultiplier(inv) {
-		var percent = inv.temperature / inv.heatFactor;
-		var multiplier = 1;
-
-		while (percent >= 1) {
-			percent = percent - 1;
-			multiplier++;
-		}
-
-		return [multiplier, percent]
-	}*/
 
 
 	function timerCheck(startTime, duration) {
@@ -581,7 +595,7 @@
 			
 		}
 	}
-//End of game mechanics
+//End of game mechanic methods
 
 //Last minute initializations
 	/*		  
@@ -590,8 +604,8 @@
 		sprite, 
 		xPos, 
 		yPos, 
-		width,       
-		height,       
+		horzCap,       
+		vertCap,       
 		heatFactor, [max heat]
 		temperature, 
 		tickRate,
@@ -604,8 +618,8 @@
 			testImg, 
 			48, 
 			40, 
-			11, 
-			6,    
+			3, 
+			5,    
 			200,          
 			0,         
 			1,   
@@ -665,8 +679,10 @@
 			drawHeat(globalInv[0]);
 
 			if (debugMode) {
-			
-				carpenter(0);
+
+				if (inputState.z4bugSpecial[1] != "held"){
+					carpenter(0);
+				}
 
 				ctxGame.fillText("X: " + globalInv[0].xPos + "(" + globalInv[0].anchor[0] + ")" 
 								+ " Y: " + globalInv[0].yPos + "(" + globalInv[0].anchor[1] + ")", 
@@ -675,11 +691,7 @@
 								);
 			}
 
-				//ctxGame.strokeStyle ="#000000";
-				//ctxGame.fillStyle = "#000000";
-
-
-			if (!rebindMode) {
+			if (rebindMode) {
 				ctxGame.fillText("[A]: "         + inputState["aButton"] + " >" + inputKeys["aButton"], scalePx(10), scalePx(30));
 				ctxGame.fillText("[B]: "         + inputState["bButton"] + " >" + inputKeys["bButton"], scalePx(10), scalePx(40));
 				ctxGame.fillText("[Left]: "      + inputState["lButton"] + " >" + inputKeys["lButton"], scalePx(10), scalePx(50));
