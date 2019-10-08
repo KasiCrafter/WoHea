@@ -74,6 +74,7 @@
 		var frameBefore = 0;
 
 
+
 		function carpenter(couch) {
 			couch = globalInv[couch];
 
@@ -207,6 +208,7 @@
 
 				if (inputState.uButton[1] == "tap") { 
 					insertInventory(debugInc, 0, true);
+					console.log(debugInc);
 				}
 
 				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
@@ -240,7 +242,7 @@
 			//Each block will have a coordinate value so we can via BlockName.index instead of just numbers. Readibility!
 			this.drawSprite = function(cellIdx, xPos, yPos) { 
 				//console.log(this.tileHeight * cellIdx[1]);
-				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[0] * this.tileWidth, cellIdx[1] * this.tileHeight);
+				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[1] * this.tileWidth, cellIdx[0] * this.tileHeight);
 
 			};
 
@@ -412,10 +414,15 @@
 				for (var i = 0; i < globalInv[box].contents.length; i++) {
 					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
 						if (globalInv[box].contents[i][v] != 0) {
-							scaleImg(
+							/*scaleImg(
 								globalInv[box].contents[i][v].sprite,
 								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
 								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
+							);*/
+							blockSheet.drawSprite(
+								globalInv[box].contents[i][v].sprite,
+								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
+								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
 							);
 						}
 
@@ -677,7 +684,7 @@
 	);
 
 	//      Item(name, 		sprite, 	type, currCook, maxCook)
-	itemLog = [
+	/*itemLog = [
 		new Item("Junk",    junkImg, 	"bad",	 0, 	  5,
 		//Heat function
 			function() {
@@ -695,11 +702,18 @@
 		new Item("Imp",     imp1Img, 	"bad", 	0, 		6.6),
 		new Item("Dstbuni",	bunnImg, 	"bad", 	0, 		5),
 		new Item("Popcrn", 	cornImg, 	"meh", 	0, 		20)
+	];*/
 
+	itemLog = [
+		new Item("Imp",     [0,1], 	"bad", 	0, 		6.6),
+		new Item("Junk",    [1,0], 	"bad",	0, 	  	5,)	,
+		new Item("Dstbuni",	[1,1], 	"bad", 	0, 		5)	,
+		new Item("Popcrn", 	[1,2], 	"meh", 	0, 		20)
 
 	];
 
-	var blockSheet = new SpriteSheet("blocksheet.png", 16, 16);
+	blockSheet = new SpriteSheet("blocksheet.png", 16, 16);
+
 //End of last calls
 
 
@@ -741,6 +755,8 @@
 									canvas.width / 2,//scalePx(globalInv[0].xPos), 
 									canvas.height / 2 //scalePx(globalInv[0].yPos)
 								);
+
+				ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
 			}
 
 			if (rebindMode) {
@@ -753,8 +769,7 @@
 				ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(10), scalePx(90));
 				ctxGame.fillText("[Downscale]: " + inputState["z2bugDown"] + " >" + inputKeys["z2bugDown"], scalePx(10), scalePx(100));
 				ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));
-
-				ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
+				
 			}
 		}
 		
