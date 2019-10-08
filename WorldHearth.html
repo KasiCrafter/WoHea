@@ -101,8 +101,8 @@
 
 
 		function ledger(currInv, a, b){
-			if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
-				var debugFontSize = (canvas.width / globalInv[currInv].horzCap) / 16;
+			//if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
+				var debugFontSize = (canvas.width / globalInv[currInv].horzCap) / (5 * pixelScale);//16;
 
 				ctxGame.save();			
 
@@ -111,7 +111,7 @@
 				ctxGame.fillText("[" + (globalInv[currInv].contents[a][b].xPos || "??") + "," + (globalInv[currInv].contents[a][b].yPos || "??") + "]", scalePx((b * 3 * debugFontSize) + (10 * b)), scalePx(debugFontSize + a * debugFontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));
 
 				ctxGame.restore();
-			}			
+			//}			
 		}
 //
 
@@ -224,6 +224,33 @@
 //End Input Functions
 
 //Sprite Cutting Functions
+
+		//constructor for sprite sheets
+		function SpriteSheet(path, tileWidth, tileHeight){
+			var self = this;
+			this.tileWidth = tileWidth;
+			this.tileHeight = tileHeight;
+
+			this.image = new Image();
+			this.image.src = path;			
+			this.image.onload = function() {
+				self.tilesPerRow = Math.floor(self.image.width / self.tileWidth);
+			};
+
+			//Each block will have a coordinate value so we can via BlockName.index instead of just numbers. Readibility!
+			this.drawSprite = function(cellIdx, xPos, yPos) { 
+				//console.log(this.tileHeight * cellIdx[1]);
+				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[0] * this.tileWidth, cellIdx[1] * this.tileHeight);
+
+			};
+
+
+		}
+
+		
+
+
+
 		var testImg = new Image();
 		testImg.src = "pot.png";
 
@@ -418,9 +445,10 @@
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
 
 						if (debugMode && inputState.bButton[1] == "held") { //Print contents of inventory in debug mode
-							ctxGame.strokeStyle ="#000000";
+							ledger(invs, y, x);
+						/*	ctxGame.strokeStyle ="#000000";
 							ctxGame.fillStyle = "#000000";
-							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8));
+							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8)); */
 						}
 
 						//Check if object is a valid block and that it is moving
@@ -465,8 +493,28 @@
 			return (pixelScale * dim);
 		}
 
-		function scaleImg(spr, sprX, sprY){
-			ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
+		function scaleImg(spr, sprX, sprY, clipWidth, clipHeight, clipX, clipY){
+			if (arguments.length == 3) {
+				ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
+			}
+			else if (arguments.length == 7) {
+				ctxGame.drawImage(
+					spr,
+					clipX,
+					clipY,
+					clipWidth,
+					clipHeight,
+					scalePx(sprX),
+					scalePx(sprY),
+					scalePx(clipWidth),
+					scalePx(clipHeight)
+				);
+
+				//console.log(clipX);
+			}
+			else {
+				console.log("UNEXPECTED # of arguments in scaleImg().");
+			}
 		}
 
 		function scaleRect(rectX, rectY, rectWid, rectHgt, doFill) {
@@ -618,8 +666,8 @@
 			testImg, 
 			48, 
 			40, 
-			3, 
-			5,    
+			6, 
+			2,    
 			200,          
 			0,         
 			1,   
@@ -650,6 +698,8 @@
 
 
 	];
+
+	var blockSheet = new SpriteSheet("blocksheet.png", 16, 16);
 //End of last calls
 
 
@@ -671,6 +721,8 @@
 			clearScreen();
 			inputProcess();
 			playerAction();
+
+			blockSheet.drawSprite([2,1], 20, 20);
 
 			tickPot();
 			itemPhysics();
