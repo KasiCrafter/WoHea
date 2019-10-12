@@ -57,10 +57,7 @@
 		var hitCheckHold = {};
 
 
-
-		var debugInc = 0
-
-
+		var debugInc = 4;
 //End config options
 
 //DEBUG TOOLS
@@ -201,14 +198,15 @@
 						debugInc++;
 					}
 					else if (debugInc + 1 > itemLog.length - 1)
-						debugInc = 0;
+						debugInc = 4;
 
 					globalInv[0].temperature++;
 				}				
 
 				if (inputState.uButton[1] == "tap") { 
 					insertInventory(debugInc, 0, true);
-					console.log(debugInc);
+					//insertInventory(debugInc, 0, true);
+					//console.log(debugInc);
 				}
 
 				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
@@ -225,10 +223,10 @@
 		}
 //End Input Functions
 
-//Sprite Cutting Functions
+//Sprite Cutting Functions		
 
-		//constructor for sprite sheets
-		function SpriteSheet(path, tileWidth, tileHeight){
+
+		function SpriteSheet(path, tileWidth, tileHeight){ //Constructor for sprite sheet images.
 			var self = this;
 			this.tileWidth = tileWidth;
 			this.tileHeight = tileHeight;
@@ -242,34 +240,13 @@
 			//Each block will have a coordinate value so we can via BlockName.index instead of just numbers. Readibility!
 			this.drawSprite = function(cellIdx, xPos, yPos) { 
 				//console.log(this.tileHeight * cellIdx[1]);
-				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[1] * this.tileWidth, cellIdx[0] * this.tileHeight);
+				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[0] * this.tileWidth, cellIdx[1] * this.tileHeight);
 
 			};
-
-
 		}
-
-		
-
-
 
 		var testImg = new Image();
 		testImg.src = "pot.png";
-
-		var junkImg = new Image();
-		junkImg.src = "junk2.png";
-
-		var junk2Img = new Image();
-		junk2Img.src = "junk1.png"
-
-		var bunnImg = new Image();
-		bunnImg.src = "dustbunny.png";
-
-		var cornImg = new Image();
-		cornImg.src = "popcorn.png";
-
-		var imp1Img = new Image();
-		imp1Img.src = "imp1.png";
 //End Sprite Cutting Functions
 
 //Items and inventory functions
@@ -323,13 +300,15 @@
 				);
 
 			}
+
+			belt.drawBelt();
 			//Draw block selection cursor
-			scaleRect(
+			/*scaleRect(
 				globalInv[inv].anchor[0] + globalInv[inv].xPos + insertPoint * (blockSize + blockPadding) + blockPadding, 
 				globalInv[inv].anchor[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
 				blockSize, 
 				blockSize
-			);
+			);*/
 		}
 
 
@@ -338,11 +317,6 @@
 			var barY = inv.yPos + inv.anchor[1];
 			var barX = inv.xPos - inv.anchor[0] - blockSize / 2;
 			var barWidth = (blockSize / 4) + (inv.maxHeat / inv.height) * 1; //blockSize / 4	;
-
-			//scaleText(multiplier + "x", barX - blockSize, barY + inv.height)
-			//scaleText(barY + inv.height - meterHeight, barX - blockSize, barY + inv.height);
-			//scaleText(inv.height - meterHeight, barX - blockSize, barY + inv.height + blockSize / 2);
-			//scaleText(meterHeight - ctxGame.lineWidth, barX - blockSize, barY + inv.height + blockSize);
 
 			scaleRect(
 				barX, 
@@ -380,7 +354,7 @@
 			}
 
 			for (var ins = 0; ins < targInv.contents.length; ins++) {
-				if (targInv.contents[ins][insertPoint] == 0) {
+				if (targInv.contents[ins][insertPoint] == 0) {//this is where we get into X speed collissions
 					targInv.contents[ins][insertPoint] = newBlock;
 					break;
 				}
@@ -431,11 +405,6 @@
 
 						if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
 							ledger(box, i, v);
-							/*ctxGame.strokeStyle ="#000000";
-							ctxGame.fillStyle = "#000000";
-							var fontSize = (canvas.width / globalInv[box].horzCap) / 16;
-							ctxGame.font = scalePx(fontSize) + "px Monospace";
-							ctxGame.fillText("[" + (globalInv[box].contents[i][v].xPos || "??") + "," + (globalInv[box].contents[i][v].yPos || "??") + "]", scalePx((v * 3 * fontSize) + (10 * v)), scalePx(fontSize + i * fontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));*/
 						}
 					}
 				}
@@ -453,9 +422,6 @@
 
 						if (debugMode && inputState.bButton[1] == "held") { //Print contents of inventory in debug mode
 							ledger(invs, y, x);
-						/*	ctxGame.strokeStyle ="#000000";
-							ctxGame.fillStyle = "#000000";
-							ctxGame.fillText("[" + (globalInv[invs].contents[y][x].xPos || "??") + ", " + (globalInv[invs].contents[y][x].yPos || "??") + "]", scalePx(x + x * 20 * 2), scalePx(10 + y * 8)); */
 						}
 
 						//Check if object is a valid block and that it is moving
@@ -493,6 +459,27 @@
 				}
 			}
 		}					
+
+		function itemLookup(itemName, returnIndex) {
+			this.returnIndex = returnIndex || false;
+
+			for (var i = 0; i < itemLog.length; i++) {
+				if (itemLog[i].name.toUpperCase() == itemName.toUpperCase()) {
+
+					if (returnIndex) {						
+						return(i);
+					}
+					else {
+						return (itemLog[i].sprite);
+					}
+				}
+			}
+			console.log(itemName.toUpperCase());
+			//console.log(itemName.toUpperCase());
+			console.log("Block lookup for \"" + itemName + "\" is INVALID.");
+			return ([0,2]);				
+			
+		}
 //End item/inventory objects/functions
 
 //Screen Functions
@@ -595,6 +582,47 @@
 
 //Gameplay Mechanic Methods
 
+	function Belt(inventory, preBakedArray, maxCapacity, position){
+		this.inventory = inventory || globalInv[0];
+		this.contents = preBakedArray || [];
+		this.capacity = maxCapacity || 1;
+		this.position = position || 0;
+
+		this.drawBelt = function() {
+			var headroom = [
+					this.inventory.anchor[0] + this.inventory.xPos + blockPadding, 
+					this.inventory.anchor[1] + this.inventory.yPos + this.inventory.height + 5	
+				];
+
+			for (var b = 0; b < this.inventory.horzCap; b++) { //draw frames
+				if (b < this.contents.length) {
+					blockSheet.drawSprite(
+						this.contents[this.position + b].sprite,
+						headroom[0] + b * (blockSize + blockPadding), 
+						headroom[1]	+ this.contents[this.position + b].yPos
+					);				
+				}		
+
+				if (b != insertPoint) {
+					blockSheet.drawSprite(
+						itemLookup("Empty"),
+						headroom[0] + b * (blockSize + blockPadding), 
+						headroom[1]											
+					);
+				}
+			}
+
+			blockSheet.drawSprite(
+				itemLookup("Cursor"),
+				headroom[0] + insertPoint * (blockSize + blockPadding), 
+				headroom[1]								
+			);
+		};
+
+
+	}
+
+
 
 	function timerCheck(startTime, duration) {
 		var timerDelta = deltaTime - startTime;
@@ -683,6 +711,10 @@
 		)
 	);
 
+
+
+
+
 	//      Item(name, 		sprite, 	type, currCook, maxCook)
 	/*itemLog = [
 		new Item("Junk",    junkImg, 	"bad",	 0, 	  5,
@@ -705,14 +737,19 @@
 	];*/
 
 	itemLog = [
-		new Item("Imp",     [0,1], 	"bad", 	0, 		6.6),
-		new Item("Junk",    [1,0], 	"bad",	0, 	  	5,)	,
-		new Item("Dstbuni",	[1,1], 	"bad", 	0, 		5)	,
-		new Item("Popcrn", 	[1,2], 	"meh", 	0, 		20)
+		new Item("Null",    [-1,-1],	"debug", 	0, 		Infinity),
+		new Item("Empty", 	[0,1], 		"debug",	0, 		Infinity),
+		new Item("Triangle",[0,1], 		"debug", 	0, 		Infinity),
+		new Item("Cursor",	[0,0], 		"debug", 	0, 		Infinity),
+		new Item("Imp",     [0,2], 		"bad", 		0, 			 6.6),
+		new Item("Junk",    [2,1], 		"bad",		0,			   5),
+		new Item("Dstbuni",	[1,2], 		"bad", 		0, 			   5),
+		new Item("Popcrn", 	[2,2], 		"meh", 		0, 			  20)
 
 	];
 
-	blockSheet = new SpriteSheet("blocksheet.png", 16, 16);
+	blockSheet = new SpriteSheet("blocks.png", 16, 16);
+	belt = new Belt(globalInv[0],[itemLog[4], itemLog[4], itemLog[5]],3,0);
 
 //End of last calls
 
@@ -735,8 +772,6 @@
 			clearScreen();
 			inputProcess();
 			playerAction();
-
-			blockSheet.drawSprite([2,1], 20, 20);
 
 			tickPot();
 			itemPhysics();
@@ -812,6 +847,10 @@
 
 
 			ENEMIES:
+			No Traditional Enemies: Everything's just a block and is just getting in the way of your hopes and dremas. But they can also 							help! Exploiting their properties to get stuff done.
+
+
+
 			SwapImp: If next to an item on the hot bar, it will swap with the middle block before the process occurs.
 					 Once inside the hearth, they'll start to simmer. Once cooked, they spit out whatever is next to them
 					 back to the hotbar. Alternatively, they get thrown out if you decide so.
@@ -836,6 +875,9 @@
 				GluBall: when shot out and hits another block, it becomes a copy of it, with both splitting some of the heat/damage between them, and then instantly bounces in the direction it was fired from. If it hits the pot's border, it'll bounce back with a LOT of heat on it. Sizzle effect is turning into a junk block.
 
 				PURE HEAT: extracts heat directly form the vessel into block form. Dissapears/breaks as soon as it cools down.
+
+				Junk Block: Cannot be launched. Only sizzling/breaking it  will remove it.
+
 
 
 
