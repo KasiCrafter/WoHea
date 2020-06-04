@@ -49,7 +49,7 @@
 		var blockPadding = 2;
 		var traySize = blockSize;			
 		var globalInv = [];
-		var localInv = [];
+		var localInv = {};
 		var itemLog = [];
 		var insertPoint = 0;
 		var insertSpeed = 2;
@@ -185,12 +185,53 @@
 
 		function playerAction() {
 			if (!debugMode || inputState.z4bugSpecial[1] == "held") {
-				if (inputState.lButton[1] == "tap" && insertPoint > 0) {
-					insertPoint--;
+				if (inputState.lButton[1] == "tap") {
+
+					if (insertPoint > 0 && localInv.position >= 0) {
+						insertPoint--;
+					}
+					else if (insertPoint == 0 && localInv.position > 0) {
+						localInv.position--;
+					}
+					console.log("Insert: " +insertPoint);
+					console.log("Position: " + localInv.position);
 				}
 
-				if (inputState.rButton[1] == "tap" && insertPoint < Math.floor(globalInv[0].width / traySize) - 1) {
-					insertPoint++;
+				
+				if (inputState.rButton[1] == "tap") {	
+					let fillerIndex = localInv.invCountNoFiller();
+
+					if( 					
+						// Get the name of the last block in the current inventory and check if it's the filler block.
+						fillerIndex != -1//(localInv.contents[localInv.contents.length - 1].name.toUpperCase() == "Filler".toUpperCase())
+						&&
+						/* 
+							Check if the player is one or more tiles away from the end of the current inventory.
+							// We don't subtract 1 from the inventory's length here like usual for a few reasons:
+							// 1) Players should have even one block on the belt be able to move to any horizontal location.
+							// 2) This effectively means that the player has one block PLUS the slots spaning the horizontal plane.
+							// 3) The full version of the math would be:
+							// 	  (localInv.contents.length - 1) - (localInv.outputInv.horzCap + 1)
+							// 4.) The +1 and -1 cancel out, so we're left with this math you see below.
+							(localInv.contents.length - localInv.outputInv.horzCap <= insertPoint + localInv.position)
+						*/			
+						fillerIndex + localInv.outputInv.horzCap < localInv.position				
+					){
+						// Blank! So no movment occurs.
+						console.log("IM IN");
+					}
+					// Go right unless the insert point would be past the maximum number of horizontal spaces available.
+					// -1 because 0-indexing is a mofo.
+					else if (insertPoint + localInv.position < localInv.contents.length - 1) {
+						if (insertPoint < localInv.outputInv.horzCap - 1) {
+							insertPoint++;					
+						}
+
+						// If you're at the end of the belt, traverse 1 index down the belt's contents instead.
+						else if (insertPoint == localInv.outputInv.horzCap - 1){
+							localInv.position++;
+						}
+					}
 				}
 
 				if (inputState.aButton[1] == "tap") {
@@ -204,9 +245,10 @@
 				}				
 
 				if (inputState.uButton[1] == "tap") { 
-					insertInventory(debugInc, 0, true);
-					//insertInventory(debugInc, 0, true);
-					//console.log(debugInc);
+					// If the bottom row has no blocks, insert selected block. Otherwise do nothing.
+					if (globalInv[0].contents[globalInv[0].contents.length - 1][insertPoint] == 0){
+						localInv.ejectItem();
+					}
 				}
 
 				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
@@ -237,11 +279,19 @@
 				self.tilesPerRow = Math.floor(self.image.width / self.tileWidth);
 			};
 
-			//Each block will have a coordinate value so we can via BlockName.index instead of just numbers. Readibility!
+			//Each block will have a coordinate value so we can call via the BlockName.index propertyinstead of just numbers. 
+			// Readibility! \ovo/
 			this.drawSprite = function(cellIdx, xPos, yPos) { 
 				//console.log(this.tileHeight * cellIdx[1]);
-				scaleImg(this.image, xPos, yPos, this.tileWidth, this.tileHeight, cellIdx[0] * this.tileWidth, cellIdx[1] * this.tileHeight);
-
+				scaleImg(
+					this.image, 
+					xPos, 
+					yPos, 
+					this.tileWidth,
+					this.tileHeight, 
+					cellIdx[0] * this.tileWidth, 
+					cellIdx[1] * this.tileHeight
+				);
 			};
 		}
 
@@ -251,6 +301,104 @@
 
 //Items and inventory functions
 	//Inventory Functions
+		function Belt(outputInv, preBakedArray, maxCapacity, position){
+			this.outputInv = outputInv || globalInv[0]; // i.e, the inventory the belt will be depositing into by default
+			this.contents = preBakedArray || [];
+			this.capacity = maxCapacity || 1;
+			this.position = position || 0;
+
+			this.drawBelt = function() {
+				var headroom = [
+						this.outputInv.anchor[0] + this.outputInv.xPos + blockPadding, 
+						this.outputInv.anchor[1] + this.outputInv.yPos + this.outputInv.height + 5	
+					];
+
+				for (var b = 0; b < this.outputInv.horzCap; b++) { //draw frames
+					//console.log(b);
+					if (b < this.contents.length) {
+						blockSheet.drawSprite(
+							this.contents[this.position + b].sprite,
+							headroom[0] + b * (blockSize + blockPadding), 
+							headroom[1]	+ this.contents[this.position + b].yPos
+						);				
+					}		
+
+					if (b != insertPoint) {
+						blockSheet.drawSprite(
+							itemLookup("Empty"),
+							headroom[0] + b * (blockSize + blockPadding), 
+							headroom[1]											
+						);
+					}
+				}
+
+				blockSheet.drawSprite(
+					itemLookup("Cursor"),
+					headroom[0] + insertPoint * (blockSize + blockPadding), 
+					headroom[1]								
+				);
+
+				if (this.position > 0) {
+					blockSheet.drawSprite(
+						itemLookup("Triangle"),
+						headroom[0] - (blockSize + blockPadding),
+						headroom[1]
+					);
+				}
+
+				if (this.position < this.contents.length - localInv.outputInv.horzCap) {
+					blockSheet.drawSprite(
+						itemLookup("Triangle"),
+						headroom[0] + (blockSize + blockPadding) * localInv.outputInv.horzCap,
+						headroom[1]
+					);
+				}
+				
+			};
+
+
+			this.ejectItem = function() {
+				//console.log(this.position + insertPoint + "   " + this.contents.length)
+				let currentBlock = this.position + insertPoint >= this.contents.length ? 0 : this.contents[this.position + insertPoint];
+
+				if (currentBlock && currentBlock.name != "Filler"){
+					let currentBlock = this.contents[this.position + insertPoint]
+					let ejectedBlock = currentBlock;
+
+					this.contents.splice(this.position + insertPoint, 1);
+
+					//if (this.position + insertPoint > this.contents.length - 1) {
+						//insertInventory(itemLog[8], localInv, true, true, this.contents.length);
+					//}
+
+					insertInventory(ejectedBlock, this.outputInv, true);
+				}
+			};
+
+
+			this.invCountNoFiller =function() {
+				var tempInv = this.contents.map(x => x.name);
+
+				return (tempInv.indexOf("Filler".toUpperCase(), this.outputInv.horzCap - 1));
+			};
+
+
+			this.invFillerNight = function() {
+				// Add filler blocks to the beginning and end of the inventory, allowing horizontal navigation always.
+				// Each cycle adds one block to the front, and one to the back. Doesn't disturb pre-existing inventories!
+				// To move from one side of the field to the other without looping back around, it requires the horizontal limit minus 1.
+				for (var i = this.outputInv.horzCap - 1; i > 0; i--) {
+					insertInventory(8, this.contents, true, true, 0);
+					insertInventory(8, this.contents, true, true, -1);
+				}
+
+				// Extra block at the right end to compensate for the belt always collapsing from right to left.
+				insertInventory(8, this.contents, true, true, -1);
+
+			}
+		}
+
+
 		function Inventory(name, sprite, xPos, yPos, horzCap, vertCap, maxHeat, temperature, tickRate, anchor, anchorMod){
 			this.name = name || "NO NAME";
 			this.sprite = sprite || "NO IMAGE";
@@ -289,26 +437,15 @@
 
 		function drawInventories() {
 			for (var inv in globalInv) {
-
-				//scaleImg(globalInv[inv].sprite, globalInv[inv].xPos, globalInv[inv].yPos);
-					//console.log("DRAWING INVENTORY SPRITE");
+				//console.log("DRAWING INVENTORY SPRITE");
 				scaleRect(
 					globalInv[inv].anchor[0] + globalInv[inv].xPos,
 					globalInv[inv].anchor[1] + globalInv[inv].yPos,
 					globalInv[inv].width - globalInv[inv].xCrunch, 
 					globalInv[inv].height - globalInv[inv].yCrunch
 				);
-
 			}
-
-			belt.drawBelt();
-			//Draw block selection cursor
-			/*scaleRect(
-				globalInv[inv].anchor[0] + globalInv[inv].xPos + insertPoint * (blockSize + blockPadding) + blockPadding, 
-				globalInv[inv].anchor[1] + globalInv[inv].yPos + globalInv[inv].height + 5, 
-				blockSize, 
-				blockSize
-			);*/
+			localInv.drawBelt();
 		}
 
 
@@ -336,30 +473,50 @@
 		}
 
 
-		function insertInventory(itemIdx, targInv, isVert){			
-			var newBlock = Object.create(itemLog[itemIdx])
-			targInv = globalInv[targInv];
-			isVert = isVert || false;
+		function insertInventory(blockToUse, targInv, isVert = true, isBelt = false, targetSlot = 0){
+			let newBlock = "";
 
-			newBlock.xPos = targInv.anchor[0] + blockPadding + (blockPadding + blockSize) * insertPoint;
-			newBlock.yPos = targInv.yPos - targInv.anchor[1];
-
-			if (isVert) {
-				newBlock.xSpeed = 0;
-				newBlock.ySpeed = -insertSpeed;				
+			if (typeof(blockToUse) == "number"){
+				newBlock = Object.create(itemLog[blockToUse]);
 			}
-			else {				
-				newBlock.xSpeed = insertSpeed;
-				newBlock.ySpeed = 0;
+			else if (typeof(blockToUse) == "object"){
+				newBlock = Object.create(blockToUse);
+			}
+			else{
+				console.log("Invalid argument not an object or number!");
+				return;
 			}
 
-			for (var ins = 0; ins < targInv.contents.length; ins++) {
-				if (targInv.contents[ins][insertPoint] == 0) {//this is where we get into X speed collissions
-					targInv.contents[ins][insertPoint] = newBlock;
-					break;
+			if (!isBelt) {
+				targInv = globalInv[0];
+
+				newBlock.xPos = targInv.anchor[0] + blockPadding + (blockPadding + blockSize) * insertPoint;
+				newBlock.yPos = targInv.yPos - targInv.anchor[1];
+
+				if (isVert) {
+					newBlock.xSpeed = 0;
+					newBlock.ySpeed = -insertSpeed;				
+				}
+				else {				
+					newBlock.xSpeed = insertSpeed;
+					newBlock.ySpeed = 0;
+				}
+
+				for (var ins = 0; ins < targInv.contents.length; ins++) {
+					if (targInv.contents[ins][insertPoint] == 0) {//this is where we get into X speed collissions
+						targInv.contents[ins][insertPoint] = newBlock;
+						break;
+					}
 				}
 			}		
+			else{
+				//targInv = localInv;
+				targetSlot = targetSlot == -1 ? (localInv.contents.length) : targetSlot
+				localInv.contents.splice(targetSlot, 0, newBlock);
+			}
 		}
+
+
 	//Item functions
 		function Item(name, sprite, type, currCook, maxCook, heatEffect) {
 			this.name = name || "???";
@@ -428,15 +585,26 @@
 						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
 
 							//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
-							if (globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding ||
-								(y - 1 >= 0 &&		
-								globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding &&
-								globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x])) 
-							{
-								globalInv[invs].contents[y][x].ySpeed = 0;
-								//globalInv[invs].contents[y][x].yPos -= 1;
-								console.log("BOP")
-							}
+							if 
+								(	
+									//Check ceiling						
+									globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding || 
+									(
+										//Check above block
+										y - 1 >= 0 
+										&&
+										//AND check if the y-cord of current block is overlapping with the above block
+										globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding 
+										&&
+										//Don't check collision with self
+										globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x]
+									)
+								)  
+								{
+									globalInv[invs].contents[y][x].ySpeed = 0;
+									//globalInv[invs].contents[y][x].yPos -= 1;
+									console.log("BOP")
+								}
 
 							//If contact is made another block, move block one pixel away until the collission is resolved
 							if (y - 1 >= 0) {
@@ -511,6 +679,15 @@
 			}
 		}
 
+
+		function flipHozDraw (flippee, flipX, flipY) {
+			ctxGame.save();
+			ctxGame.scale(-1, 1);
+			ctxGame.drawImage(flippee, flipX, flipY);
+			ctxGame.restore();
+		}
+
+
 		function scaleRect(rectX, rectY, rectWid, rectHgt, doFill) {
 			//scaleText(rectHgt, rectX + blockSize, rectY + blockSize / 2)
 			if (rectWid - ctxGame.lineWidth <= rectWid){  
@@ -580,50 +757,7 @@
 		}
 //End screen functions
 
-//Gameplay Mechanic Methods
-
-	function Belt(inventory, preBakedArray, maxCapacity, position){
-		this.inventory = inventory || globalInv[0];
-		this.contents = preBakedArray || [];
-		this.capacity = maxCapacity || 1;
-		this.position = position || 0;
-
-		this.drawBelt = function() {
-			var headroom = [
-					this.inventory.anchor[0] + this.inventory.xPos + blockPadding, 
-					this.inventory.anchor[1] + this.inventory.yPos + this.inventory.height + 5	
-				];
-
-			for (var b = 0; b < this.inventory.horzCap; b++) { //draw frames
-				if (b < this.contents.length) {
-					blockSheet.drawSprite(
-						this.contents[this.position + b].sprite,
-						headroom[0] + b * (blockSize + blockPadding), 
-						headroom[1]	+ this.contents[this.position + b].yPos
-					);				
-				}		
-
-				if (b != insertPoint) {
-					blockSheet.drawSprite(
-						itemLookup("Empty"),
-						headroom[0] + b * (blockSize + blockPadding), 
-						headroom[1]											
-					);
-				}
-			}
-
-			blockSheet.drawSprite(
-				itemLookup("Cursor"),
-				headroom[0] + insertPoint * (blockSize + blockPadding), 
-				headroom[1]								
-			);
-		};
-
-
-	}
-
-
-
+//Gameplay Mechanism Methods
 	function timerCheck(startTime, duration) {
 		var timerDelta = deltaTime - startTime;
 
@@ -678,7 +812,9 @@
 			
 		}
 	}
-//End of game mechanic methods
+
+
+//End of game mechanism methods
 
 //Last minute initializations
 	/*		  
@@ -697,59 +833,61 @@
 	)*/
 	globalInv.push(
 		new Inventory(
-			"Hearth", 
-			testImg, 
-			48, 
-			40, 
-			6, 
-			2,    
-			200,          
-			0,         
-			1,   
-			[9, 19], 
-			[-1, -4]
+			"Hearth", 	// name
+			testImg, 	// sprite
+			48, 		// xPos
+			40, 		// yPos
+			5, 			// horzCap
+			3,    		// vertCap
+			200,        // heatFactor
+			0,         	// temperature
+			1,   		// tickRate
+			[9, 19], 	// anchor
+			[-1, -4]	// anchorMod
 		)
 	);
 
 
-
-
-
 	//      Item(name, 		sprite, 	type, currCook, maxCook)
-	/*itemLog = [
-		new Item("Junk",    junkImg, 	"bad",	 0, 	  5,
-		//Heat function
-			function() {
-				if (this.sprite == junkImg) {
-					this.sprite = junk2Img;
-					console.log("exit org");
+		/*itemLog = [
+			new Item("Junk",    junkImg, 	"bad",	 0, 	  5,
+			//Heat function
+				function() {
+					if (this.sprite == junkImg) {
+						this.sprite = junk2Img;
+						console.log("exit org");
+					}
+					else if (this.sprite == junk2Img) {
+						this.sprite = junkImg;
+						console.log("exit mod");
+					}
+					console.log(typeof(this.sprite));
 				}
-				else if (this.sprite == junk2Img) {
-					this.sprite = junkImg;
-					console.log("exit mod");
-				}
-				console.log(typeof(this.sprite));
-			}
-		),
-		new Item("Imp",     imp1Img, 	"bad", 	0, 		6.6),
-		new Item("Dstbuni",	bunnImg, 	"bad", 	0, 		5),
-		new Item("Popcrn", 	cornImg, 	"meh", 	0, 		20)
+			),
+			new Item("Imp",     imp1Img, 	"bad", 	0, 		6.6),
+			new Item("Dstbuni",	bunnImg, 	"bad", 	0, 		5),
+			new Item("Popcrn", 	cornImg, 	"meh", 	0, 		20)
 	];*/
 
 	itemLog = [
 		new Item("Null",    [-1,-1],	"debug", 	0, 		Infinity),
-		new Item("Empty", 	[0,1], 		"debug",	0, 		Infinity),
-		new Item("Triangle",[0,1], 		"debug", 	0, 		Infinity),
-		new Item("Cursor",	[0,0], 		"debug", 	0, 		Infinity),
+		new Item("Empty", 	[0,0], 		"debug",	0, 		Infinity),
+		new Item("Triangle",[1,0], 		"debug", 	0, 		Infinity),		
+		new Item("Cursor",	[0,1], 		"debug", 	0, 		Infinity),
 		new Item("Imp",     [0,2], 		"bad", 		0, 			 6.6),
 		new Item("Junk",    [2,1], 		"bad",		0,			   5),
 		new Item("Dstbuni",	[1,2], 		"bad", 		0, 			   5),
-		new Item("Popcrn", 	[2,2], 		"meh", 		0, 			  20)
+		new Item("Popcrn", 	[2,2], 		"meh", 		0, 			  20),
+		new Item("Filler",	[2,0], 		"debug", 	0, 		Infinity)
 
 	];
 
 	blockSheet = new SpriteSheet("blocks.png", 16, 16);
-	belt = new Belt(globalInv[0],[itemLog[4], itemLog[4], itemLog[5]],3,0);
+	framesSheet = new SpriteSheet("block_frames.png", 16, 16);
+	iconSheet = new SpriteSheet("block_icons.png", 16, 16);
+	mainBelt = new Belt(globalInv[0],[itemLog[7], itemLog[4], itemLog[5],itemLog[4], itemLog[6], itemLog[4], itemLog[5], itemLog[6], itemLog[4], itemLog[4], itemLog[5]],3,4);
+	localInv = mainBelt;
+	localInv.invFillerNight();
 
 //End of last calls
 
@@ -766,7 +904,7 @@
 
 
 		if (!stop) {
-			frameCount++;
+			//frameCount++;
 
 			changeScale();
 			clearScreen();
@@ -803,9 +941,10 @@
 				ctxGame.fillText("[Down]: "      + inputState["wButton"] + " >" + inputKeys["wButton"], scalePx(10), scalePx(80));
 				ctxGame.fillText("[Upscale]: "   + inputState["zbugUp"] + " >" + inputKeys["zbugUp"], scalePx(10), scalePx(90));
 				ctxGame.fillText("[Downscale]: " + inputState["z2bugDown"] + " >" + inputKeys["z2bugDown"], scalePx(10), scalePx(100));
-				ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));
-				
+				ctxGame.fillText("[Debug Switch]: " + inputState["z3bugExit"] + " >" + inputKeys["z3bugExit"], scalePx(10), scalePx(110));	
 			}
+
+			frameCount++;
 		}
 		
 		requestAnimationFrame(gameLoop);
