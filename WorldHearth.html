@@ -46,8 +46,7 @@
 		trayImg.src = "tray.png";
 		var img = new Image();   // Create new img element	
 		var blockSize = 16;
-		var blockPadding = 2;
-		var traySize = blockSize;			
+		var blockPadding = 2;			
 		var globalInv = [];
 		var localInv = {};
 		var itemLog = [];
@@ -55,8 +54,10 @@
 		var insertSpeed = 2;
 		var hitBoxHold = {};
 		var hitCheckHold = {};
+		var isStrafeMode = false;
 
-
+		var testImg = new Image();
+		testImg.src = "pot.png";
 		var debugInc = 4;
 //End config options
 
@@ -76,7 +77,7 @@
 			couch = globalInv[couch];
 
 			if (inputState.rButton[1] == "held" && inputState.lButton[1] == "held") {
-				//Blank on purpose
+				//Blank on purpose, you can't go in opposite directions.
 			}
 			else if (inputState.rButton[1] == "held") {
 				couch.xPos += 1;
@@ -87,7 +88,7 @@
 
 
 			if (inputState.wButton[1] == "held" && inputState.uButton[1] == "held") {
-				//Blank on purpose
+				//Blank on purpose, you can't go in opposite directions.
 			}
 			else if (inputState.wButton[1] == "held") {
 				couch.yPos += 1;
@@ -99,17 +100,17 @@
 
 
 		function ledger(currInv, a, b){
-			//if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
-				var debugFontSize = (canvas.width / globalInv[currInv].horzCap) / (5 * pixelScale);//16;
+			
+			var debugFontSize = (canvas.width / globalInv[currInv].horzCap) / (5 * pixelScale);
 
-				ctxGame.save();			
+			ctxGame.save();			
 
-				ctxGame.font = scalePx(debugFontSize) + "px Monospace";
+			ctxGame.font = scalePx(debugFontSize) + "px Monospace";
 
-				ctxGame.fillText("[" + (globalInv[currInv].contents[a][b].xPos || "??") + "," + (globalInv[currInv].contents[a][b].yPos || "??") + "]", scalePx((b * 3 * debugFontSize) + (10 * b)), scalePx(debugFontSize + a * debugFontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));
+			ctxGame.fillText("[" + (globalInv[currInv].contents[a][b].xPos || "??") + "," + (globalInv[currInv].contents[a][b].yPos || "??") + "]", scalePx((b * 3 * debugFontSize) + (10 * b)), scalePx(debugFontSize + a * debugFontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));
 
-				ctxGame.restore();
-			//}			
+			ctxGame.restore();
+				
 		}
 //
 
@@ -129,7 +130,6 @@
 		ctxGame.imageSmoothingEnabled = false;
 
 		ctxGame.font = (10 * pixelScale) + "px Arial";
-		//ctxGame.lineCap = "square";
 
 		var body = document.getElementsByTagName("body")[0];
 		body.appendChild(canvas);
@@ -187,60 +187,37 @@
 			if (!debugMode || inputState.z4bugSpecial[1] == "held") {
 				if (inputState.lButton[1] == "tap") {
 
-					if (insertPoint > 0 && localInv.position >= 0) {
+					if (insertPoint > 0 && localInv.position >= 0 && !isStrafeMode) {
 						insertPoint--;
 					}
-					else if (insertPoint == 0 && localInv.position > 0) {
+					else if ((insertPoint == 0 || isStrafeMode) && localInv.canGoLeft()){
 						localInv.position--;
 					}
-					console.log("Insert: " +insertPoint);
-					console.log("Position: " + localInv.position);
 				}
-
 				
 				if (inputState.rButton[1] == "tap") {	
 					let fillerIndex = localInv.invCountNoFiller();
 
-					if( 					
-						// Get the name of the last block in the current inventory and check if it's the filler block.
-						fillerIndex != -1//(localInv.contents[localInv.contents.length - 1].name.toUpperCase() == "Filler".toUpperCase())
-						&&
-						/* 
-							Check if the player is one or more tiles away from the end of the current inventory.
-							// We don't subtract 1 from the inventory's length here like usual for a few reasons:
-							// 1) Players should have even one block on the belt be able to move to any horizontal location.
-							// 2) This effectively means that the player has one block PLUS the slots spaning the horizontal plane.
-							// 3) The full version of the math would be:
-							// 	  (localInv.contents.length - 1) - (localInv.outputInv.horzCap + 1)
-							// 4.) The +1 and -1 cancel out, so we're left with this math you see below.
-							(localInv.contents.length - localInv.outputInv.horzCap <= insertPoint + localInv.position)
-						*/			
-						fillerIndex + localInv.outputInv.horzCap < localInv.position				
-					){
+					// If filler blocks are present, make sure they stay an (almost) full belt away.
+					if(fillerIndex != -1 && fillerIndex + localInv.outputInv.horzCap < localInv.position) {
 						// Blank! So no movment occurs.
-						console.log("IM IN");
 					}
+
 					// Go right unless the insert point would be past the maximum number of horizontal spaces available.
 					// -1 because 0-indexing is a mofo.
 					else if (insertPoint + localInv.position < localInv.contents.length - 1) {
-						if (insertPoint < localInv.outputInv.horzCap - 1) {
+						if (insertPoint < localInv.outputInv.horzCap - 1 && !isStrafeMode) {
 							insertPoint++;					
 						}
 
 						// If you're at the end of the belt, traverse 1 index down the belt's contents instead.
-						else if (insertPoint == localInv.outputInv.horzCap - 1){
+						else if ((insertPoint == localInv.outputInv.horzCap - 1 || isStrafeMode) && localInv.canGoRight()){	
 							localInv.position++;
 						}
 					}
 				}
 
 				if (inputState.aButton[1] == "tap") {
-					if (debugInc + 1 <= itemLog.length - 1) {
-						debugInc++;
-					}
-					else if (debugInc + 1 > itemLog.length - 1)
-						debugInc = 4;
-
 					globalInv[0].temperature++;
 				}				
 
@@ -251,7 +228,15 @@
 					}
 				}
 
-				if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
+				if (inputState.wButton[1] == "held") {
+					isStrafeMode = true;
+				}
+				else {
+					isStrafeMode = false;
+				}
+				/*if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
+					// Traverse the pot vertically and see if there are any non-zero values. 
+					// If found, set those values to 0.
 					for (var p = 0; p < globalInv[0].contents.length; p++) {
 						if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
 
@@ -260,15 +245,14 @@
 
 						}
 					}					
-				}
+				}*/
 			}
 		}
 //End Input Functions
 
 //Sprite Cutting Functions		
-
-
-		function SpriteSheet(path, tileWidth, tileHeight){ //Constructor for sprite sheet images.
+		//Constructor for sprite sheet images.
+		function SpriteSheet(path, tileWidth, tileHeight){ 
 			var self = this;
 			this.tileWidth = tileWidth;
 			this.tileHeight = tileHeight;
@@ -279,24 +263,44 @@
 				self.tilesPerRow = Math.floor(self.image.width / self.tileWidth);
 			};
 
-			//Each block will have a coordinate value so we can call via the BlockName.index propertyinstead of just numbers. 
+			// Each block will have a coordinate we can call via the itemLookup function instead of manually writing it. 
 			// Readibility! \ovo/
-			this.drawSprite = function(cellIdx, xPos, yPos) { 
-				//console.log(this.tileHeight * cellIdx[1]);
+			this.drawSprite = function(cellIdx, xPos, yPos, cutY = 0, shiftY = 0) { 
+				// cutY is used to make the selection itself smaller.
+				// shiftY is used to move the initial location of the crop.
 				scaleImg(
 					this.image, 
-					xPos, 
-					yPos, 
-					this.tileWidth,
-					this.tileHeight, 
 					cellIdx[0] * this.tileWidth, 
-					cellIdx[1] * this.tileHeight
+					(cellIdx[1] * this.tileHeight) + shiftY,
+					this.tileWidth,
+					// 0 values in widths/heights cause crashes, so this is the next best thing.
+					// This says "If the first patameter is False/Zero, return the second parameter."
+					this.tileHeight - cutY || 0.0001, 
+					xPos, 
+					yPos + shiftY		
 				);
 			};
 		}
 
-		var testImg = new Image();
-		testImg.src = "pot.png";
+
+		function assembleBlock(itemObject, xPos, yPos){			
+			let baseLayer = [0,1]; // The dark border that serves as a sizzle indicator as it is revealed
+			let sizzleLayer = [1,1]; // Lighter border which gradually shinks as sizzle builds up
+			let damageLayer =  [2,1]; // The center "filling" of the grid, which goes down as the block takes damage.
+
+			let blockCoords = itemLookup(itemObject.name);				
+
+			let sizzleRatio = blockSize * (itemObject.currCook / itemObject.maxCook);
+			let damageRatio = blockSize - (blockSize * (itemObject.health / itemObject.healthMax));
+
+
+			framesSheet.drawSprite(baseLayer, xPos, yPos);
+			framesSheet.drawSprite(sizzleLayer, xPos, yPos, sizzleRatio);
+			framesSheet.drawSprite(damageLayer, xPos, yPos, 0, damageRatio);
+			// Below is some jank that's used while migrating between the new and old sheets.
+			// Since the new sheet is 2 rows instead of 3 (but otherwise perfectly aligned), I just subtract 1 from the Y value.
+			iconSheet.drawSprite([blockCoords[0], blockCoords[1] - 1], xPos, yPos);
+		}
 //End Sprite Cutting Functions
 
 //Items and inventory functions
@@ -307,38 +311,58 @@
 			this.capacity = maxCapacity || 1;
 			this.position = position || 0;
 
+			this.canGoLeft = function() {
+				return(this.position > 0);
+			}
+
+			this.canGoRight = function() {
+				return(this.position < this.contents.length - localInv.outputInv.horzCap);
+			}
+
 			this.drawBelt = function() {
+				//Delcared as to avoid repeating these tiny adjustments in position many MANY times.
 				var headroom = [
 						this.outputInv.anchor[0] + this.outputInv.xPos + blockPadding, 
 						this.outputInv.anchor[1] + this.outputInv.yPos + this.outputInv.height + 5	
 					];
 
-				for (var b = 0; b < this.outputInv.horzCap; b++) { //draw frames
-					//console.log(b);
+				// This loop traverses the belt's contents and draws it.
+				for (var b = 0; b < this.outputInv.horzCap; b++) { 
 					if (b < this.contents.length) {
-						blockSheet.drawSprite(
-							this.contents[this.position + b].sprite,
-							headroom[0] + b * (blockSize + blockPadding), 
-							headroom[1]	+ this.contents[this.position + b].yPos
-						);				
+						if (this.contents[this.position + b].name == "Filler") {
+							blockSheet.drawSprite(
+								this.contents[this.position + b].sprite,
+								headroom[0] + b * (blockSize + blockPadding), 
+								headroom[1]	+ this.contents[this.position + b].yPos
+							);
+						}
+						else {
+							assembleBlock(
+								this.contents[this.position + b],
+								headroom[0] + b * (blockSize + blockPadding), 
+								headroom[1]	+ this.contents[this.position + b].yPos
+							);
+						}			
 					}		
 
 					if (b != insertPoint) {
-						blockSheet.drawSprite(
+						/*blockSheet.drawSprite(
 							itemLookup("Empty"),
 							headroom[0] + b * (blockSize + blockPadding), 
 							headroom[1]											
-						);
+						);*/
 					}
 				}
 
+				// Since we skip drawing over the cursor in the loop, we can safelt just draw it here.
 				blockSheet.drawSprite(
 					itemLookup("Cursor"),
 					headroom[0] + insertPoint * (blockSize + blockPadding), 
 					headroom[1]								
 				);
 
-				if (this.position > 0) {
+				// If there are blocks to our left, show the left arrow icon.
+				if (this.canGoLeft()){ //this.position > 0) {
 					blockSheet.drawSprite(
 						itemLookup("Triangle"),
 						headroom[0] - (blockSize + blockPadding),
@@ -346,7 +370,8 @@
 					);
 				}
 
-				if (this.position < this.contents.length - localInv.outputInv.horzCap) {
+				// So long as we have blocks to our right, show the right arrow icon
+				if (this.canGoRight()){ //this.position < this.contents.length - localInv.outputInv.horzCap) {
 					blockSheet.drawSprite(
 						itemLookup("Triangle"),
 						headroom[0] + (blockSize + blockPadding) * localInv.outputInv.horzCap,
@@ -358,18 +383,15 @@
 
 
 			this.ejectItem = function() {
-				//console.log(this.position + insertPoint + "   " + this.contents.length)
+				// Get the block the player has selected currently.
 				let currentBlock = this.position + insertPoint >= this.contents.length ? 0 : this.contents[this.position + insertPoint];
 
+				// So long as it's a block that exists and is NOT filler, shoot it into the output inventory.
 				if (currentBlock && currentBlock.name != "Filler"){
-					let currentBlock = this.contents[this.position + insertPoint]
-					let ejectedBlock = currentBlock;
+					let ejectedBlock = this.contents[this.position + insertPoint];		
 
+					// This both deletes the block and moves over the rest of the blocks to close the gap.
 					this.contents.splice(this.position + insertPoint, 1);
-
-					//if (this.position + insertPoint > this.contents.length - 1) {
-						//insertInventory(itemLog[8], localInv, true, true, this.contents.length);
-					//}
 
 					insertInventory(ejectedBlock, this.outputInv, true);
 				}
@@ -402,7 +424,6 @@
 		function Inventory(name, sprite, xPos, yPos, horzCap, vertCap, maxHeat, temperature, tickRate, anchor, anchorMod){
 			this.name = name || "NO NAME";
 			this.sprite = sprite || "NO IMAGE";
-			//this.heatFactor = (heatFactor * 1.0) || 1;
 			this.maxHeat = (maxHeat * 1.0) || 100;
 			this.temperature = (temperature * 1.0) || 0;
 			this.tickRate = tickRate || 1;
@@ -503,7 +524,7 @@
 				}
 
 				for (var ins = 0; ins < targInv.contents.length; ins++) {
-					if (targInv.contents[ins][insertPoint] == 0) {//this is where we get into X speed collissions
+					if (targInv.contents[ins][insertPoint] == 0) {
 						targInv.contents[ins][insertPoint] = newBlock;
 						break;
 					}
@@ -524,6 +545,8 @@
 			this.sprite = sprite || trayImg;
 			this.currCook = currCook || 0;
 			this.maxCook = maxCook || 0;
+			this.health = 5;
+			this.healthMax = 5;
 			this.xPos = 0;
 			this.yPos = 0;
 			this.xSpeed = 0;
@@ -545,20 +568,17 @@
 				for (var i = 0; i < globalInv[box].contents.length; i++) {
 					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
 						if (globalInv[box].contents[i][v] != 0) {
-							/*scaleImg(
-								globalInv[box].contents[i][v].sprite,
-								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
-								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos				
-							);*/
-							blockSheet.drawSprite(
+							/*blockSheet.drawSprite(
 								globalInv[box].contents[i][v].sprite,
 								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
 								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
+							);*/
+							assembleBlock(
+								globalInv[box].contents[i][v],
+								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
+								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
 							);
-						}
-
-
-						
+						}						
 
 						if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
 							ledger(box, i, v);
@@ -655,7 +675,7 @@
 			return (pixelScale * dim);
 		}
 
-		function scaleImg(spr, sprX, sprY, clipWidth, clipHeight, clipX, clipY){
+		function scaleImg(spr, clipX, clipY, clipWidth, clipHeight, sprX, sprY){
 			if (arguments.length == 3) {
 				ctxGame.drawImage(spr, scalePx(sprX), scalePx(sprY), scalePx(spr.width), scalePx(spr.height));
 			}
@@ -771,7 +791,8 @@
 
 	function tickPot() {
 		for (stuff in globalInv) {
-			var inv = globalInv[stuff]
+			//var inv = globalInv[stuff]
+			var inv = globalInv[0];
 
 			if (inv.timeCooking == 0) {
 				inv.timeCooking = now;
@@ -798,39 +819,27 @@
 			for (var row in inv.contents) {
 				for (var col in inv.contents[row]){
 					if (inv.contents[row][col] != 0) {
-						inv.contents[row][col].currCook += inv.tickRate;
-
-						if (inv.contents[row][col].currCook >= inv.contents[row][col].maxCook) {
-							inv.contents[row][col].heatEffect(self);
-							inv.contents[row][col].currCook = 0;
+						if (inv.contents[row][col].currCook > inv.contents[row][col].maxCook) {
+							//inv.contents[row][col].heatEffect(self);
+							inv.contents[row][col].currCook = inv.contents[row][col].maxCook;
 							//console.log("SPICY MOVE! !");
 						}
+						else if (inv.contents[row][col].currCook == inv.contents[row][col].maxCook) {
+							inv.contents[row][col].currCook = 0;
+						}
 
+						else if (inv.contents[row][col].currCook < inv.contents[row][col].maxCook){
+							inv.contents[row][col].currCook += inv.tickRate;
+						}
 					}
 				}
 			}
 			
 		}
 	}
-
-
 //End of game mechanism methods
 
 //Last minute initializations
-	/*		  
-	function Inventory(
-		name,  
-		sprite, 
-		xPos, 
-		yPos, 
-		horzCap,       
-		vertCap,       
-		heatFactor, [max heat]
-		temperature, 
-		tickRate,
-		anchor, 
-		anchorMod
-	)*/
 	globalInv.push(
 		new Inventory(
 			"Hearth", 	// name
@@ -847,37 +856,17 @@
 		)
 	);
 
-
-	//      Item(name, 		sprite, 	type, currCook, maxCook)
-		/*itemLog = [
-			new Item("Junk",    junkImg, 	"bad",	 0, 	  5,
-			//Heat function
-				function() {
-					if (this.sprite == junkImg) {
-						this.sprite = junk2Img;
-						console.log("exit org");
-					}
-					else if (this.sprite == junk2Img) {
-						this.sprite = junkImg;
-						console.log("exit mod");
-					}
-					console.log(typeof(this.sprite));
-				}
-			),
-			new Item("Imp",     imp1Img, 	"bad", 	0, 		6.6),
-			new Item("Dstbuni",	bunnImg, 	"bad", 	0, 		5),
-			new Item("Popcrn", 	cornImg, 	"meh", 	0, 		20)
-	];*/
+	//      Item(name, 		coords, 	type,	  currCook, maxCook)
 
 	itemLog = [
 		new Item("Null",    [-1,-1],	"debug", 	0, 		Infinity),
 		new Item("Empty", 	[0,0], 		"debug",	0, 		Infinity),
 		new Item("Triangle",[1,0], 		"debug", 	0, 		Infinity),		
 		new Item("Cursor",	[0,1], 		"debug", 	0, 		Infinity),
-		new Item("Imp",     [0,2], 		"bad", 		0, 			 6.6),
-		new Item("Junk",    [2,1], 		"bad",		0,			   5),
-		new Item("Dstbuni",	[1,2], 		"bad", 		0, 			   5),
-		new Item("Popcrn", 	[2,2], 		"meh", 		0, 			  20),
+		new Item("Imp",     [0,2], 		"bad", 		2, 			 6.6),
+		new Item("Junk",    [2,1], 		"bad",		2,			   5),
+		new Item("Dstbuni",	[1,2], 		"bad", 		3, 			   5),
+		new Item("Popcrn", 	[2,2], 		"meh", 		4, 			  20),
 		new Item("Filler",	[2,0], 		"debug", 	0, 		Infinity)
 
 	];
@@ -885,10 +874,26 @@
 	blockSheet = new SpriteSheet("blocks.png", 16, 16);
 	framesSheet = new SpriteSheet("block_frames.png", 16, 16);
 	iconSheet = new SpriteSheet("block_icons.png", 16, 16);
-	mainBelt = new Belt(globalInv[0],[itemLog[7], itemLog[4], itemLog[5],itemLog[4], itemLog[6], itemLog[4], itemLog[5], itemLog[6], itemLog[4], itemLog[4], itemLog[5]],3,4);
+
+	mainBelt = new Belt(
+					globalInv[0],   // Inventory this belt will output to when firing.
+					[				// Array of items, all refering to the item index above
+						itemLog[7], 
+						itemLog[4], 
+						itemLog[5],
+						itemLog[4], 
+						itemLog[6], 
+						itemLog[4], 
+						itemLog[5], 
+						itemLog[6], 
+						itemLog[4], 
+						itemLog[4], 
+						itemLog[5]
+					],
+					3,				// (DEPRECATED) Was how the belt was padded in earlier versions.
+					4);				// Starting position (index) of belt. 0 will simply leave you deep in placeholder blocks.
 	localInv = mainBelt;
 	localInv.invFillerNight();
-
 //End of last calls
 
 
@@ -923,10 +928,12 @@
 					carpenter(0);
 				}
 
-				ctxGame.fillText("X: " + globalInv[0].xPos + "(" + globalInv[0].anchor[0] + ")" 
-								+ " Y: " + globalInv[0].yPos + "(" + globalInv[0].anchor[1] + ")", 
-									canvas.width / 2,//scalePx(globalInv[0].xPos), 
-									canvas.height / 2 //scalePx(globalInv[0].yPos)
+				ctxGame.fillText(
+									"X: " + globalInv[0].xPos + "(" + globalInv[0].anchor[0] + ")" 
+									+ 
+									" Y: " + globalInv[0].yPos + "(" + globalInv[0].anchor[1] + ")", 
+									canvas.width / 2,
+									canvas.height / 2 
 								);
 
 				ctxGame.fillText("FPS: " + deltaFr, scalePx(20), scalePx(120));
@@ -956,9 +963,6 @@
 			-max tick rate = meterheight / heatFactor
 			-low heat factor = low max tick rate, low ambient tick rate
 			-max temperature = based on the container, it will have a ratio between heat given TO blocks and heat GAINED by blocks. go too far one way or another and container dies(?)
-
-
-
 
 
 
