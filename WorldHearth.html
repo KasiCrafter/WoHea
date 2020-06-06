@@ -52,8 +52,6 @@
 		var itemLog = [];
 		var insertPoint = 0;
 		var insertSpeed = 2;
-		var hitBoxHold = {};
-		var hitCheckHold = {};
 		var isStrafeMode = false;
 
 		var testImg = new Image();
@@ -107,10 +105,42 @@
 
 			ctxGame.font = scalePx(debugFontSize) + "px Monospace";
 
-			ctxGame.fillText("[" + (globalInv[currInv].contents[a][b].xPos || "??") + "," + (globalInv[currInv].contents[a][b].yPos || "??") + "]", scalePx((b * 3 * debugFontSize) + (10 * b)), scalePx(debugFontSize + a * debugFontSize));//scalePx(v + v * 20), scalePx(10 + i * 8));
+			ctxGame.fillText(
+				a, 
+				0, 
+				scalePx(
+					debugFontSize + a * debugFontSize
+				)				
+			)
 
-			ctxGame.restore();
-				
+			ctxGame.fillText(
+				" [" 
+					+ 
+					(globalInv[currInv].contents[a][b].xPos || "??") 
+					+ 
+					"," 
+					+ 
+					(globalInv[currInv].contents[a][b].yPos || "??") 
+					+ 
+				"]", 
+				scalePx(
+					(b * 3 * debugFontSize) + (10 * b)
+				), 
+				scalePx(
+					debugFontSize + a * debugFontSize)
+				);//scalePx(v + v * 20), scalePx(10 + i * 8));
+
+			/*ctxGame.fillText(
+				globalInv[currInv].contents[a][b].ySpeed,
+				scalePx(
+					(b * 3 * debugFontSize) + (10 * b)
+				), 
+				scalePx(
+					debugFontSize + a * debugFontSize
+				)
+			);*/
+
+			ctxGame.restore();				
 		}
 //
 
@@ -221,31 +251,38 @@
 					globalInv[0].temperature++;
 				}				
 
-				if (inputState.uButton[1] == "tap") { 
+				if (inputState.bButton[1] == "held") {
+					isStrafeMode = true;
+				}
+				else {
+					isStrafeMode = false;				
+				}
+
+				if (inputState.wButton[1] == "tap") { 
 					// If the bottom row has no blocks, insert selected block. Otherwise do nothing.
-					if (globalInv[0].contents[globalInv[0].contents.length - 1][insertPoint] == 0){
+					//if (globalInv[0].contents[globalInv[0].contents.length - 1][insertPoint] == 0){
+					if (globalInv[0].contents[0][insertPoint] == 0){
 						localInv.ejectItem();
 					}
 				}
 
-				if (inputState.wButton[1] == "held") {
-					isStrafeMode = true;
-				}
-				else {
-					isStrafeMode = false;
-				}
-				/*if (inputState.wButton[1] == "tap" && 0 < globalInv[0].contents.length) {
-					// Traverse the pot vertically and see if there are any non-zero values. 
-					// If found, set those values to 0.
-					for (var p = 0; p < globalInv[0].contents.length; p++) {
-						if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
+				if (inputState.uButton[1] == "tap") {
 
-							globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
-							break;
+				/* Debug code for clearing the inventory on the spot. */
+					if (0 < globalInv[0].contents.length) {
+						// Traverse the pot vertically and see if there are any non-zero values. 
+						// If found, set those values to 0.
+						for (var p = 0; p < globalInv[0].contents.length; p++) {
+							if (globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] != 0) {
 
-						}
-					}					
-				}*/
+								globalInv[0].contents[globalInv[0].contents.length - p - 1][insertPoint] = 0;
+								break;
+
+							}
+						}					
+					}
+				}
+				
 			}
 		}
 //End Input Functions
@@ -294,9 +331,9 @@
 			let damageRatio = blockSize - (blockSize * (itemObject.health / itemObject.healthMax));
 
 
-			framesSheet.drawSprite(baseLayer, xPos, yPos);
-			framesSheet.drawSprite(sizzleLayer, xPos, yPos, sizzleRatio);
-			framesSheet.drawSprite(damageLayer, xPos, yPos, 0, damageRatio);
+			frameSheet.drawSprite(baseLayer, xPos, yPos);
+			frameSheet.drawSprite(sizzleLayer, xPos, yPos, sizzleRatio);
+			frameSheet.drawSprite(damageLayer, xPos, yPos, 0, damageRatio);
 			// Below is some jank that's used while migrating between the new and old sheets.
 			// Since the new sheet is 2 rows instead of 3 (but otherwise perfectly aligned), I just subtract 1 from the Y value.
 			iconSheet.drawSprite([blockCoords[0], blockCoords[1] - 1], xPos, yPos);
@@ -319,11 +356,21 @@
 				return(this.position < this.contents.length - localInv.outputInv.horzCap);
 			}
 
+			this.getTopBlock = function() {
+				for (let i = 0; i <= this.outputInv.vertCap - 1; i++) {
+					if (this.outputInv.contents[i][insertPoint] != 0) {
+						return(i);
+					}
+				}
+				return(this.outputInv.vertCap);
+			}
+
 			this.drawBelt = function() {
 				//Delcared as to avoid repeating these tiny adjustments in position many MANY times.
 				var headroom = [
 						this.outputInv.anchor[0] + this.outputInv.xPos + blockPadding, 
-						this.outputInv.anchor[1] + this.outputInv.yPos + this.outputInv.height + 5	
+						this.outputInv.yPos + this.outputInv.anchor[1] - blockSize - blockPadding
+						//this.outputInv.anchor[1] + this.outputInv.yPos + this.outputInv.height + 5 <-- Upside down version	
 					];
 
 				// This loop traverses the belt's contents and draws it.
@@ -354,6 +401,13 @@
 					}
 				}
 
+				frameSheet.drawSprite(
+					[0,0],
+					headroom[0] + insertPoint * (blockSize + blockPadding),
+					headroom[1] + (blockSize + blockPadding) * (this.getTopBlock() || 2) + blockPadding
+				);
+
+
 				// Since we skip drawing over the cursor in the loop, we can safelt just draw it here.
 				blockSheet.drawSprite(
 					itemLookup("Cursor"),
@@ -362,7 +416,7 @@
 				);
 
 				// If there are blocks to our left, show the left arrow icon.
-				if (this.canGoLeft()){ //this.position > 0) {
+				if (this.canGoLeft()){
 					blockSheet.drawSprite(
 						itemLookup("Triangle"),
 						headroom[0] - (blockSize + blockPadding),
@@ -371,7 +425,7 @@
 				}
 
 				// So long as we have blocks to our right, show the right arrow icon
-				if (this.canGoRight()){ //this.position < this.contents.length - localInv.outputInv.horzCap) {
+				if (this.canGoRight()){
 					blockSheet.drawSprite(
 						itemLookup("Triangle"),
 						headroom[0] + (blockSize + blockPadding) * localInv.outputInv.horzCap,
@@ -436,10 +490,16 @@
 			this.vertCap = (vertCap % (Math.floor(canvas.height / ((blockSize + blockPadding) * pixelScale)) - 1))|| 1;
 			this.height =  this.vertCap * (blockSize + blockPadding) + blockPadding;
 			this.width = this.horzCap * (blockSize + blockPadding) + blockPadding;
-			this.anchorMod = anchorMod || [0,0];
-			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - this.height / 2];
 			this.contents = generateInv(this.horzCap, this.vertCap);
 			this.timeCooking = 0;
+
+			// These two are special (but necessary) headaches. The "anchor" is the offset from the canvas' [0,0] position.
+			// This allows for X,Y values to be local to the inventory and seperate from their true place on the canvas.
+			// This allwas for inventories t be represented by wonky sprites, and move the inventory itself without recalculation.
+			// The anchor mod is, if for whatever reason, need to shrink the sprite while keeping the same anchor.
+			// You usually won't need to use the anchor mod. Just the anchor is enough for getting your inventory where ya need.
+			this.anchorMod = anchorMod || [0,0];
+			this.anchor = [anchor[0] + anchorMod[0], anchor[1] + anchorMod[1] - this.height / 2];
 		} 
 
 
@@ -512,19 +572,28 @@
 				targInv = globalInv[0];
 
 				newBlock.xPos = targInv.anchor[0] + blockPadding + (blockPadding + blockSize) * insertPoint;
-				newBlock.yPos = targInv.yPos - targInv.anchor[1];
+				newBlock.yPos = targInv.anchor[1];//targInv.yPos - targInv.anchor[1]; <-- Upside down version
 
 				if (isVert) {
 					newBlock.xSpeed = 0;
-					newBlock.ySpeed = -insertSpeed;				
+					newBlock.ySpeed = insertSpeed; //-insertSpeed;	<-- Upside down version			
 				}
 				else {				
 					newBlock.xSpeed = insertSpeed;
 					newBlock.ySpeed = 0;
 				}
 
-				for (var ins = 0; ins < targInv.contents.length; ins++) {
-					if (targInv.contents[ins][insertPoint] == 0) {
+				for (var ins = targInv.contents.length - 1; ins >= 0; ins--) {
+				//for (var ins = 0; ins < targInv.contents.length; ins++) { //<-- Upside down version
+					if (
+							targInv.contents[ins][insertPoint] == 0 
+							&& 
+							(
+								ins == 0
+								||
+								targInv.contents[ins - 1][insertPoint] == 0
+							)
+						) {
 						targInv.contents[ins][insertPoint] = newBlock;
 						break;
 					}
@@ -568,11 +637,6 @@
 				for (var i = 0; i < globalInv[box].contents.length; i++) {
 					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
 						if (globalInv[box].contents[i][v] != 0) {
-							/*blockSheet.drawSprite(
-								globalInv[box].contents[i][v].sprite,
-								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
-								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
-							);*/
 							assembleBlock(
 								globalInv[box].contents[i][v],
 								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
@@ -590,9 +654,6 @@
 
 
 		function itemPhysics() {
-			hitBoxHold = -1;
-			hitCheckHold = -1;
-
 			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
 				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
@@ -602,48 +663,87 @@
 						}
 
 						//Check if object is a valid block and that it is moving
-						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {
-
+						if (globalInv[invs].contents[y][x] != 0 && globalInv[invs].contents[y][x].ySpeed != 0) {							
 							//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
 							if 
 								(	
 									//Check ceiling						
-									globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding || 
+									//globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding || <-- Upside down version
+									globalInv[invs].contents[y][x].yPos + blockSize + blockPadding >= globalInv[invs].anchor[1] + globalInv[invs].height 
+									||									
 									(
 										//Check above block
-										y - 1 >= 0 
-										&&
-										//AND check if the y-cord of current block is overlapping with the above block
-										globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding 
-										&&
+										y + 1 < globalInv[invs].contents.length//y - 1 >= 0 
+										&&									
+										//globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding <-- Upside down version
+										//&&
 										//Don't check collision with self
 										globalInv[invs].contents[y][x] != globalInv[invs].contents[y][x]
 									)
 								)  
 								{
 									globalInv[invs].contents[y][x].ySpeed = 0;
-									//globalInv[invs].contents[y][x].yPos -= 1;
-									console.log("BOP")
+
+									// The following code is to align what you see in-game versus what is stored
+									// in the game's memory. I findit spooky, too.
+
+									// Amount of block spaces to shift downwards
+									let fallAmount = 0; 
+
+									// Just so it's less messy to type out.
+									let currentColumn = globalInv[invs].contents; 
+
+									// Start from the current column's bottom index up to the top.
+									for (let l = currentColumn.length - 1; l >= 0; l--){
+										// If we see a blank space, we add it to the tally.
+										if(currentColumn[l][x] == 0){
+											fallAmount++;
+										}
+										// If it's not a blank space, that means it's a block.
+										// We shift that block down by the amount tracked above as to leave no gaps in the field.										
+										else {											
+											currentColumn[l + fallAmount][x] = currentColumn[l][x];
+
+											// If you're the bottom-most block, please don't endlessly delete yourself.
+											// You have so much to live for.											
+											currentColumn[l][x] = fallAmount != 0 ? 0 : currentColumn[l][x];											
+										}
+									}
+									//console.log("BOP")
 								}
 
-							//If contact is made another block, move block one pixel away until the collission is resolved
-							if (y - 1 >= 0) {
-								while (globalInv[invs].contents[y][x].yPos <= 
-									   globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding + 1
-									   &&
-									   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]) 
+
+							// If contact is made another block, move block one pixel away until the collission is resolved
+							// Through sheer code mysticism, this somehow seems to be responsible for block gravity.
+							// I don't get it either.
+							if (y + 1 < globalInv[invs].contents.length && globalInv[invs].contents[y][x].ySpeed != 0) {
+								while 
+								(
+									globalInv[invs].contents[y][x].yPos + blockSize + blockPadding 
+									>= 
+									globalInv[invs].contents[y + 1][x].yPos - 1
+									&&
+									globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]
+								) 
 								{								
-
-									globalInv[invs].contents[y][x].yPos += 1;
-
+									globalInv[invs].contents[y][x].yPos -= 1;
 								}
 							}
+
+							/*
+								if (y - 1 >= 0) {while (globalInv[invs].contents[y][x].yPos <= 
+										   globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding + 1
+										   &&
+										   globalInv[invs].contents[y][x] == globalInv[invs].contents[y][x]){								
+										globalInv[invs].contents[y][x].yPos += 1;
+									}} <-- Upside down version of previous IF statement
+							*/
 						}
-							//If something's moving, move it to the correct distance according to its speed
-							globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
 
+
+						//If something's moving, move it to the correct distance according to its speed
+						globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
 					}
-
 				}
 			}
 		}					
@@ -663,7 +763,6 @@
 				}
 			}
 			console.log(itemName.toUpperCase());
-			//console.log(itemName.toUpperCase());
 			console.log("Block lookup for \"" + itemName + "\" is INVALID.");
 			return ([0,2]);				
 			
@@ -844,15 +943,15 @@
 		new Inventory(
 			"Hearth", 	// name
 			testImg, 	// sprite
-			48, 		// xPos
-			40, 		// yPos
+			35, 		// xPos
+			50, 		// yPos
 			5, 			// horzCap
-			3,    		// vertCap
+			4,    		// vertCap
 			200,        // heatFactor
 			0,         	// temperature
 			1,   		// tickRate
-			[9, 19], 	// anchor
-			[-1, -4]	// anchorMod
+			[9, 32], 	// anchor
+			[0, 0]	// anchorMod
 		)
 	);
 
@@ -872,7 +971,7 @@
 	];
 
 	blockSheet = new SpriteSheet("blocks.png", 16, 16);
-	framesSheet = new SpriteSheet("block_frames.png", 16, 16);
+	frameSheet = new SpriteSheet("block_frames.png", 16, 16);
 	iconSheet = new SpriteSheet("block_icons.png", 16, 16);
 
 	mainBelt = new Belt(
