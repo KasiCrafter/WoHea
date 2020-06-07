@@ -49,7 +49,7 @@
 		var blockPadding = 2;			
 		var globalInv = [];
 		var localInv = {};
-		var itemLog = [];
+		var blockCodex = [];
 		var insertPoint = 0;
 		var insertSpeed = 2;
 		var isStrafeMode = false;
@@ -262,13 +262,13 @@
 					// If the bottom row has no blocks, insert selected block. Otherwise do nothing.
 					//if (globalInv[0].contents[globalInv[0].contents.length - 1][insertPoint] == 0){
 					if (globalInv[0].contents[0][insertPoint] == 0){
-						localInv.ejectItem();
+						localInv.ejectBlock();
 					}
 				}
 
 				if (inputState.uButton[1] == "tap") {
 
-				/* Debug code for clearing the inventory on the spot. */
+					/* Debug code for clearing the inventory on the spot. */
 					if (0 < globalInv[0].contents.length) {
 						// Traverse the pot vertically and see if there are any non-zero values. 
 						// If found, set those values to 0.
@@ -300,7 +300,7 @@
 				self.tilesPerRow = Math.floor(self.image.width / self.tileWidth);
 			};
 
-			// Each block will have a coordinate we can call via the itemLookup function instead of manually writing it. 
+			// Each block will have a coordinate we can call via the blockLookup function instead of manually writing it. 
 			// Readibility! \ovo/
 			this.drawSprite = function(cellIdx, xPos, yPos, cutY = 0, shiftY = 0) { 
 				// cutY is used to make the selection itself smaller.
@@ -320,15 +320,15 @@
 		}
 
 
-		function assembleBlock(itemObject, xPos, yPos){			
+		function assembleBlock(blockObject, xPos, yPos){			
 			let baseLayer = [0,1]; // The dark border that serves as a sizzle indicator as it is revealed
 			let sizzleLayer = [1,1]; // Lighter border which gradually shinks as sizzle builds up
 			let damageLayer =  [2,1]; // The center "filling" of the grid, which goes down as the block takes damage.
 
-			let blockCoords = itemLookup(itemObject.name);				
+			let blockCoords = blockLookup(blockObject.name);				
 
-			let sizzleRatio = blockSize * (itemObject.currCook / itemObject.maxCook);
-			let damageRatio = blockSize - (blockSize * (itemObject.health / itemObject.healthMax));
+			let sizzleRatio = blockSize * (blockObject.currCook / blockObject.maxCook);
+			let damageRatio = blockSize - (blockSize * (blockObject.health / blockObject.healthMax));
 
 
 			frameSheet.drawSprite(baseLayer, xPos, yPos);
@@ -336,11 +336,11 @@
 			frameSheet.drawSprite(damageLayer, xPos, yPos, 0, damageRatio);
 			// Below is some jank that's used while migrating between the new and old sheets.
 			// Since the new sheet is 2 rows instead of 3 (but otherwise perfectly aligned), I just subtract 1 from the Y value.
-			iconSheet.drawSprite([blockCoords[0], blockCoords[1] - 1], xPos, yPos);
+			iconSheet.drawSprite(blockLookup(blockObject.name), xPos, yPos);
 		}
 //End Sprite Cutting Functions
 
-//Items and inventory functions
+//Block and inventory functions
 	//Inventory Functions
 		function Belt(outputInv, preBakedArray, maxCapacity, position){
 			this.outputInv = outputInv || globalInv[0]; // i.e, the inventory the belt will be depositing into by default
@@ -377,8 +377,8 @@
 				for (var b = 0; b < this.outputInv.horzCap; b++) { 
 					if (b < this.contents.length) {
 						if (this.contents[this.position + b].name == "Filler") {
-							blockSheet.drawSprite(
-								this.contents[this.position + b].sprite,
+							miscSheet.drawSprite(
+								this.contents[this.position + b].sprite[1],
 								headroom[0] + b * (blockSize + blockPadding), 
 								headroom[1]	+ this.contents[this.position + b].yPos
 							);
@@ -394,7 +394,7 @@
 
 					if (b != insertPoint) {
 						/*blockSheet.drawSprite(
-							itemLookup("Empty"),
+							blockLookup("Empty"),
 							headroom[0] + b * (blockSize + blockPadding), 
 							headroom[1]											
 						);*/
@@ -409,16 +409,16 @@
 
 
 				// Since we skip drawing over the cursor in the loop, we can safelt just draw it here.
-				blockSheet.drawSprite(
-					itemLookup("Cursor"),
-					headroom[0] + insertPoint * (blockSize + blockPadding), 
-					headroom[1]								
+				drawUiElement(
+					"Cursor2",
+					headroom[0] + insertPoint * (blockSize + blockPadding),
+					headroom[1]	
 				);
 
 				// If there are blocks to our left, show the left arrow icon.
 				if (this.canGoLeft()){
-					blockSheet.drawSprite(
-						itemLookup("Triangle"),
+					drawUiElement(
+						"Tri-Left",
 						headroom[0] - (blockSize + blockPadding),
 						headroom[1]
 					);
@@ -426,17 +426,16 @@
 
 				// So long as we have blocks to our right, show the right arrow icon
 				if (this.canGoRight()){
-					blockSheet.drawSprite(
-						itemLookup("Triangle"),
+					drawUiElement(
+						"Tri-Right",
 						headroom[0] + (blockSize + blockPadding) * localInv.outputInv.horzCap,
 						headroom[1]
 					);
-				}
-				
+				}				
 			};
 
 
-			this.ejectItem = function() {
+			this.ejectBlock = function() {
 				// Get the block the player has selected currently.
 				let currentBlock = this.position + insertPoint >= this.contents.length ? 0 : this.contents[this.position + insertPoint];
 
@@ -464,12 +463,12 @@
 				// Each cycle adds one block to the front, and one to the back. Doesn't disturb pre-existing inventories!
 				// To move from one side of the field to the other without looping back around, it requires the horizontal limit minus 1.
 				for (var i = this.outputInv.horzCap - 1; i > 0; i--) {
-					insertInventory(8, this.contents, true, true, 0);
-					insertInventory(8, this.contents, true, true, -1);
+					insertInventory(0, this.contents, true, true, 0);
+					insertInventory(0, this.contents, true, true, -1);
 				}
 
 				// Extra block at the right end to compensate for the belt always collapsing from right to left.
-				insertInventory(8, this.contents, true, true, -1);
+				insertInventory(0, this.contents, true, true, -1);
 
 			}
 		}
@@ -516,7 +515,33 @@
 		}
 
 
-		function drawInventories() {
+		function drawGlobalInventory() {
+			for (var box in globalInv) {
+
+				if (globalInv[box].contents.length <= 0) {
+					break;
+				}
+
+				for (var i = 0; i < globalInv[box].contents.length; i++) {
+					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
+						if (globalInv[box].contents[i][v] != 0) {
+							assembleBlock(
+								globalInv[box].contents[i][v],
+								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
+								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
+							);
+						}						
+
+						if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
+							ledger(box, i, v);
+						}
+					}
+				}
+			}
+		}
+
+
+		function drawInvOverlay() {
 			for (var inv in globalInv) {
 				//console.log("DRAWING INVENTORY SPRITE");
 				scaleRect(
@@ -558,7 +583,7 @@
 			let newBlock = "";
 
 			if (typeof(blockToUse) == "number"){
-				newBlock = Object.create(itemLog[blockToUse]);
+				newBlock = Object.create(blockCodex[blockToUse]);
 			}
 			else if (typeof(blockToUse) == "object"){
 				newBlock = Object.create(blockToUse);
@@ -607,8 +632,8 @@
 		}
 
 
-	//Item functions
-		function Item(name, sprite, type, currCook, maxCook, heatEffect) {
+	// Block functions
+		function Block(name, sprite, type, currCook, maxCook, heatEffect) {
 			this.name = name || "???";
 			this.type = type || "NULL";
 			this.sprite = sprite || trayImg;
@@ -627,33 +652,7 @@
 		}
 
 
-		function drawItems() {
-			for (var box in globalInv) {
-
-				if (globalInv[box].contents.length <= 0) {
-					break;
-				}
-
-				for (var i = 0; i < globalInv[box].contents.length; i++) {
-					for (var v = 0; v < globalInv[box].contents[i].length; v++) {
-						if (globalInv[box].contents[i][v] != 0) {
-							assembleBlock(
-								globalInv[box].contents[i][v],
-								globalInv[box].contents[i][v].xPos + globalInv[box].xPos,
-								globalInv[box].contents[i][v].yPos	+ globalInv[box].yPos
-							);
-						}						
-
-						if (debugMode && inputState.bButton[1] != "held") { //Print contents of inventory in debug mode
-							ledger(box, i, v);
-						}
-					}
-				}
-			}
-		}
-
-
-		function itemPhysics() {
+		function blockPhysics() {
 			for (var invs = 0; invs < globalInv.length; invs++) {	//Traverse all inventories
 				for (var y = 0; y < globalInv[invs].contents.length; y++) {	//Traverse all blocks in a single inventory
 					for (var x = 0; x < globalInv[invs].contents[y].length; x++) {	
@@ -667,12 +666,12 @@
 							//If the block touches the top of the inventory (y-coordinate) OR another block, set block speed to 0
 							if 
 								(	
-									//Check ceiling						
+									//Check FLOOR						
 									//globalInv[invs].contents[y][x].yPos <= globalInv[invs].anchor[1] + blockPadding || <-- Upside down version
 									globalInv[invs].contents[y][x].yPos + blockSize + blockPadding >= globalInv[invs].anchor[1] + globalInv[invs].height 
 									||									
 									(
-										//Check above block
+										//Check BELOW block (we fall-y boiz now)
 										y + 1 < globalInv[invs].contents.length//y - 1 >= 0 
 										&&									
 										//globalInv[invs].contents[y][x].yPos <= globalInv[invs].contents[y - 1][x].yPos + blockSize + blockPadding <-- Upside down version
@@ -683,7 +682,6 @@
 								)  
 								{
 									globalInv[invs].contents[y][x].ySpeed = 0;
-
 									// The following code is to align what you see in-game versus what is stored
 									// in the game's memory. I findit spooky, too.
 
@@ -709,10 +707,7 @@
 											currentColumn[l][x] = fallAmount != 0 ? 0 : currentColumn[l][x];											
 										}
 									}
-									//console.log("BOP")
 								}
-
-
 							// If contact is made another block, move block one pixel away until the collission is resolved
 							// Through sheer code mysticism, this somehow seems to be responsible for block gravity.
 							// I don't get it either.
@@ -739,8 +734,6 @@
 									}} <-- Upside down version of previous IF statement
 							*/
 						}
-
-
 						//If something's moving, move it to the correct distance according to its speed
 						globalInv[invs].contents[y][x].yPos += globalInv[invs].contents[y][x].ySpeed;
 					}
@@ -748,28 +741,36 @@
 			}
 		}					
 
-		function itemLookup(itemName, returnIndex) {
-			this.returnIndex = returnIndex || false;
 
-			for (var i = 0; i < itemLog.length; i++) {
-				if (itemLog[i].name.toUpperCase() == itemName.toUpperCase()) {
+		function blockLookup(blockName, shouldJustReturnIndex = false) {
+			//this.returnIndex = returnIndex || false;
 
-					if (returnIndex) {						
+			for (var i = 0; i < blockCodex.length; i++) {
+				if (blockCodex[i].name.toUpperCase() == blockName.toUpperCase()) {
+
+					if (shouldJustReturnIndex) {						
 						return(i);
 					}
 					else {
-						return (itemLog[i].sprite);
+						return (blockCodex[i].sprite[1]);
 					}
 				}
 			}
-			console.log(itemName.toUpperCase());
-			console.log("Block lookup for \"" + itemName + "\" is INVALID.");
+			console.log(blockName.toUpperCase());
+			console.log("Block lookup for \"" + blockName + "\" is INVALID.");
 			return ([0,2]);				
 			
 		}
-//End item/inventory objects/functions
+//End block/inventory objects/functions
 
-//Screen Functions
+//Screen and UI Functions
+		function UiElement(elementName, homeSheet, sheetCoords) {
+			this.elementName = elementName || "INVALID";
+			this.homeSheet = homeSheet || "MISSING SPRITE SHEET OBJECT.";
+			this.sheetCoords = sheetCoords || [-1,-1];
+		}
+	
+
 		function scalePx(dim){
 			return (pixelScale * dim);
 		}
@@ -796,14 +797,6 @@
 			else {
 				console.log("UNEXPECTED # of arguments in scaleImg().");
 			}
-		}
-
-
-		function flipHozDraw (flippee, flipX, flipY) {
-			ctxGame.save();
-			ctxGame.scale(-1, 1);
-			ctxGame.drawImage(flippee, flipX, flipY);
-			ctxGame.restore();
 		}
 
 
@@ -874,7 +867,22 @@
 			canvas.height = 144 * pixelScale;
 			ctxGame.font = (10 * pixelScale) + "px Arial"; 
 		}
-//End screen functions
+
+		function drawUiElement(wantedElement, xPos, yPos, cutY = 0, shiftY = 0) {
+			for(item in uiCodex) {
+				if (uiCodex[item].elementName.toUpperCase() == wantedElement.toUpperCase()) {
+					uiCodex[item].homeSheet.drawSprite
+					(
+						uiCodex[item].sheetCoords,
+						xPos,
+						yPos,
+						cutY,
+						shiftY
+					);
+				}
+			}
+		}
+//End screen/UI functions
 
 //Gameplay Mechanism Methods
 	function timerCheck(startTime, duration) {
@@ -955,39 +963,58 @@
 		)
 	);
 
-	//      Item(name, 		coords, 	type,	  currCook, maxCook)
 
-	itemLog = [
-		new Item("Null",    [-1,-1],	"debug", 	0, 		Infinity),
-		new Item("Empty", 	[0,0], 		"debug",	0, 		Infinity),
-		new Item("Triangle",[1,0], 		"debug", 	0, 		Infinity),		
-		new Item("Cursor",	[0,1], 		"debug", 	0, 		Infinity),
-		new Item("Imp",     [0,2], 		"bad", 		2, 			 6.6),
-		new Item("Junk",    [2,1], 		"bad",		2,			   5),
-		new Item("Dstbuni",	[1,2], 		"bad", 		3, 			   5),
-		new Item("Popcrn", 	[2,2], 		"meh", 		4, 			  20),
-		new Item("Filler",	[2,0], 		"debug", 	0, 		Infinity)
+	//blockSheet = new SpriteSheet("blocks.png", 16, 16);
+	frameSheet = new SpriteSheet("block_frames.png", 16, 16);
 
+
+
+	iconSheet = new SpriteSheet("block_icons.png", 16, 16);
+	miscSheet = new SpriteSheet("frames_misc.png", 16, 16);
+	sizzleSheet = new SpriteSheet("frames_sizzle.png", 16, 16);
+	healthSheet = new SpriteSheet("frames_health.png", 16, 16);
+	cursorSheet = new SpriteSheet("cursor.png", 22, 22);
+	barSheet = new SpriteSheet("bar_labels.png", 18, 18);
+
+
+	//		Block(name, 		 spriteshet  &   location 		type,	  currCook, maxCook)
+	blockCodex = [
+		new Block("Filler",		[	miscSheet, [1,0]	], 		"debug", 	0, 		Infinity),
+		new Block("Junk1",  	[	iconSheet, [1,0]	], 		"bad",		2,			   5),
+		new Block("Junk2",   	[	iconSheet, [2,0]	], 		"bad",		2,			   5),
+		new Block("Imp",     	[	iconSheet, [0,1]	], 		"bad", 		2, 			 6.6),
+		new Block("Dstbuni",	[	iconSheet, [1,1]	], 		"bad", 		3, 			   5),
+		new Block("Popcrn", 	[	iconSheet, [2,1]	], 		"meh", 		4, 			  20)
 	];
 
-	blockSheet = new SpriteSheet("blocks.png", 16, 16);
-	frameSheet = new SpriteSheet("block_frames.png", 16, 16);
-	iconSheet = new SpriteSheet("block_icons.png", 16, 16);
+	uiCodex = [
+		new UiElement("Empty", 			miscSheet,		[0,4]),
+		new UiElement("Tri-Left",		miscSheet,		[2,0]),	
+		new UiElement("Tri-Right",		miscSheet,		[3,0]),
+		new UiElement("Cursor1",		cursorSheet,	[1,0]),
+		new UiElement("Cursor2",		cursorSheet,	[2,0]),
+		new UiElement("Tag-Left",		barSheet,		[0,0]),
+		new UiElement("Tag-Right",		barSheet,		[1,0]),
+		new UiElement("Tag-High",		barSheet,		[2,0]),
+		new UiElement("Tag-Low",		barSheet,		[3,0]),
+		new UiElement("Tag-Up",			barSheet,		[4,0]),
+		new UiElement("Tag-Down",		barSheet,		[5,0])
+	];
 
 	mainBelt = new Belt(
 					globalInv[0],   // Inventory this belt will output to when firing.
-					[				// Array of items, all refering to the item index above
-						itemLog[7], 
-						itemLog[4], 
-						itemLog[5],
-						itemLog[4], 
-						itemLog[6], 
-						itemLog[4], 
-						itemLog[5], 
-						itemLog[6], 
-						itemLog[4], 
-						itemLog[4], 
-						itemLog[5]
+					[				// Array of blocks, all refering to the block index above
+						blockCodex[3], 
+						blockCodex[4], 
+						blockCodex[2],
+						blockCodex[4], 
+						blockCodex[1], 
+						blockCodex[3], 
+						blockCodex[3], 
+						blockCodex[3], 
+						blockCodex[4], 
+						blockCodex[4], 
+						blockCodex[5]
 					],
 					3,				// (DEPRECATED) Was how the belt was padded in earlier versions.
 					4);				// Starting position (index) of belt. 0 will simply leave you deep in placeholder blocks.
@@ -1016,9 +1043,9 @@
 			playerAction();
 
 			tickPot();
-			itemPhysics();
-			drawInventories();
-			drawItems();
+			blockPhysics();
+			drawInvOverlay();
+			drawGlobalInventory();
 			drawHeat(globalInv[0]);
 
 			if (debugMode) {
@@ -1093,13 +1120,13 @@
 
 
 
-			SwapImp: If next to an item on the hot bar, it will swap with the middle block before the process occurs.
+			SwapImp: If next to an block on the hot bar, it will swap with the middle block before the process occurs.
 					 Once inside the hearth, they'll start to simmer. Once cooked, they spit out whatever is next to them
 					 back to the hotbar. Alternatively, they get thrown out if you decide so.
 
 			Junk: This block does nothing! However, it'll disappear once it finishes sizzling in whatever inventory it's in.
 
-			DustBuni: Appears if the player has too many items in the hotbar. Will sizzle only when not viewed. If sizzled in 			  inventory, it turns the two adjacent items to DusBuni's. If a Dustbuni is Dusbuni'd, it turns into JUNK.
+			DustBuni: Appears if the player has too many blocks in the hotbar. Will sizzle only when not viewed. If sizzled in 			  inventory, it turns the two adjacent blocks to DusBuni's. If a Dustbuni is Dusbuni'd, it turns into JUNK.
 					  DustBuni's make for good fuel, but create SMOKE in the bellows when burned.
 
 
@@ -1108,7 +1135,7 @@
 
 
 			RESOURCES:
-				PopKern: Inert when no heat. When it sizzles to completion, it breaks adjacent items and turns into Popcrn. Destroyed when sizzled to completion. Popcrn can also
+				PopKern: Inert when no heat. When it sizzles to completion, it breaks adjacent blocks and turns into Popcrn. Destroyed when sizzled to completion. Popcrn can also
 
 				Coal: When sizzling, it greatly boosts the heat of the container it's in. Greatly. Exceedingly so. When sizzling, it is impossible to retrieve from the oven, easily causing overheating. Produces more Smoke than usual when heating.
 
